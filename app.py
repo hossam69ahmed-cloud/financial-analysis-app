@@ -1,4 +1,5 @@
 import sqlite3
+import pandas as pd
 import streamlit as st
 
 # إعداد الصفحة
@@ -96,7 +97,12 @@ else:
   st.sidebar.write(f"الشركة: **{st.session_state.company}**")
 
   menu = st.sidebar.radio(
-      "القائمة الرئيسية", ["لوحة التحليل المالي", "إدارة الشركات والفروع"]
+      "القائمة الرئيسية",
+      [
+          "لوحة التحليل المالي",
+          "إدارة الشركات والفروع",
+          "رفع بيانات الشركات (Excel)",
+      ],
   )
 
   if st.sidebar.button("تسجيل الخروج"):
@@ -141,11 +147,61 @@ else:
       for idx, row in enumerate(rows, 1):
         st.write(f"{idx}. الشركة: **{row[0]}** ــ الفرع: **{row[1]}**")
     else:
-      st.info("لا توجد شركات مسجلة حتى الآن.")
+      st.info("لا توجد شركات مسجلة حتى الآن. يرجى إضافتها أولاً.")
 
-  # --- شاشة لوحة التحليل المالي ---
+  # --- شاشة رفع بيانات الـ Excel للشركة والفرع ---
+  elif menu == "رفع بيانات الشركات (Excel)":
+    st.title("📁 رفع ملفات التحليل المالي للشركات")
+
+    # جلب الشركات والفروع المسجلة لاختيارها
+    conn = sqlite3.connect("company_data.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT DISTINCT company_name FROM companies_branches")
+    companies = [row[0] for row in cursor.fetchall()]
+    conn.close()
+
+    if companies:
+      selected_company = st.selectbox("اختر الشركة", companies)
+
+      conn = sqlite3.connect("company_data.db")
+      cursor = conn.cursor()
+      cursor.execute(
+          "SELECT branch_name FROM companies_branches WHERE company_name = ?",
+          (selected_company,),
+      )
+      branches = [row[0] for row in cursor.fetchall()]
+      conn.close()
+
+      selected_branch = st.selectbox("اختر الفرع", branches)
+
+      uploaded_file = st.file_uploader(
+          "ارفع ملف الـ Excel المالي للشركة والفرع المحدد", type=["xlsx", "xls"]
+      )
+
+      if uploaded_file is not None:
+        df = pd.read_excel(uploaded_file)
+        st.success(
+            f"تم رفع الملف بنجاح للشركة: {selected_company} - الفرع:"
+            f" {selected_branch}"
+        )
+        st.dataframe(df)
+    else:
+      st.warning(
+          "يرجى الانتقال إلى صفحة 'إدارة الشركات والفروع' وإضافة شركة واحدة على"
+          " الأقل أولاً."
+      )
+
+  # --- شاشة لوحة التحليل المالي الأساسية ---
   elif menu == "لوحة التحليل المالي":
     st.title("📊 لوحة تحكم التحليل المالي والتقارير")
     st.write(
-        "هنا سيتم عرض الجداول وقوائم الدخل والميزانيات الخاصة بكل شركة وفروعها."
+        "هنا يتم عرض قوائم الدخل، الميزانية، والنسب المالية المرتبطة بالشركات"
+        " والفروع."
     )
+    # يمكنك وضع الجداول الإفتراضية أو المتقدمة الخاصة بك هنا
+    data_default = {
+        "البند": ["المبيعات", "تكلفة المبيعات", "مجمل الربح", "صافي الربح"],
+        "2023": [100000, 60000, 40000, 25000],
+        "2024": [130000, 75000, 55000, 37000],
+    }
+    st.table(pd.DataFrame(data_default))
