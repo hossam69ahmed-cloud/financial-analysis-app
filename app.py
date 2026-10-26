@@ -209,8 +209,7 @@ else:
       st.markdown("---")
       st.subheader("📥 نموذج الشيت القياسي الشامل")
       st.write(
-          "ارفع شيت واحد يحتوي على كل حسابات الشركة (قائمة دخل + ميزانية + مصاريف)"
-          " بالأعمدة الثلاثة:"
+          "ارفع شيت واحد يحتوي على كل حسابات الشركة بالأعمدة الثلاثة:"
           " **الحساب الرئيسي، الحساب الفرعي، القيمة**"
       )
 
@@ -334,10 +333,6 @@ else:
   # --- شاشة حذف وإدارة البيانات ---
   elif menu == "🗑️ حذف وإدارة البيانات":
     st.title("🗑️ إدارة وحذف البيانات المالية المسجلة")
-    st.write(
-        "يمكنك من خلال هذه الصفحة حذف بيانات شهر معين لشركة وفرع محدد لإعادة"
-        " رفعها أو تعديلها."
-    )
 
     conn = sqlite3.connect("company_data.db")
     cursor = conn.cursor()
@@ -385,7 +380,6 @@ else:
 
       st.markdown("---")
 
-      # عرض البيانات الحالية لهذا الشهر قبل الحذف للتأكد
       conn = sqlite3.connect("company_data.db")
       cursor = conn.cursor()
       cursor.execute(
@@ -434,7 +428,7 @@ else:
 
   # --- شاشة التقارير المالية المتقدمة والتحليل التلقائي ---
   elif menu == "📈 التقارير المالية والتحليل التلقائي":
-    st.title("📊 لوحة التقارير المالية الموزعة تلقائياً")
+    st.title("📊 لوحة التقارير المالية والمقارنة")
 
     conn = sqlite3.connect("company_data.db")
     cursor = conn.cursor()
@@ -471,6 +465,7 @@ else:
                 "تقرير الميزانية العمومية",
                 "تقرير قائمة التدفقات النقدية",
                 "تقرير تحليل المصاريف",
+                "عرض كل البيانات المسجلة",
             ],
         )
 
@@ -510,4 +505,73 @@ else:
                 """,
             (view_company, view_branch, m_name),
         )
-        res
+        res = cursor.fetchall()
+        conn.close()
+        return pd.DataFrame(res, columns=["الحساب الرئيسي", "الحساب الفرعي", "القيمة"])
+
+
+      df1 = get_month_data(month_1)
+      df2 = get_month_data(month_2)
+
+      # تعديل ذكي: إذا اخترت "عرض كل البيانات المسجلة" أو الفلتر، سنعرض البيانات مباشرة دون تقييد صارم يمنع ظهورها
+      if report_type == "عرض كل البيانات المسجلة":
+        st.subheader(f"📄 إجمالي البيانات المسجلة للشهرين المختارين")
+        c1, c2 = st.columns(2)
+        with c1:
+          st.write(f"بيانات شهر: {month_1}")
+          st.dataframe(df1 if not df1.empty else pd.DataFrame(columns=["لا توجد بيانات"]))
+        with c2:
+          st.write(f"بيانات شهر: {month_2}")
+          st.dataframe(df2 if not df2.empty else pd.DataFrame(columns=["لا توجد بيانات"]))
+      else:
+        # تصفية مرنة جداً للتقارير لضمان عدم اختفاء البيانات
+        if report_type == "تقرير قائمة الدخل":
+          valid_keywords = ["مبيعات", "تكلفة", "مصاريف", "اهلاك", "إهلاك", "ضرائب", "دخل"]
+          df1_f = df1[df1["الحساب الرئيسي"].str.contains('|'.join(valid_keywords), na=False)] if not df1.empty else df1
+          df2_f = df2[df2["الحساب الرئيسي"].str.contains('|'.join(valid_keywords), na=False)] if not df2.empty else df2
+        elif report_type == "تقرير تحليل المصاريف":
+          exp_keywords = ["مصاريف", "اهلاك", "إهلاك", "تشغيلية", "ادارية", "إدارية"]
+          df1_f = df1[df1["الحساب الرئيسي"].str.contains('|'.join(exp_keywords), na=False)] if not df1.empty else df1
+          df2_f = df2[df2["الحساب الرئيسي"].str.contains('|'.join(exp_keywords), na=False)] if not df2.empty else df2
+        elif report_type == "تقرير الميزانية العمومية":
+          bs_keywords = ["أصول", "التزامات", "حقوق", "ملكية", "الخصوم"]
+          df1_f = df1[df1["الحساب الرئيسي"].str.contains('|'.join(bs_keywords), na=False)] if not df1.empty else df1
+          df2_f = df2[df2["الحساب الرئيسي"].str.contains('|'.join(bs_keywords), na=False)] if not df2.empty else df2
+        else:
+          df1_f = df1
+          df2_f = df2
+
+        if not df1.empty or not df2.empty:
+          st.subheader(f"📄 {report_type} | مقارنة بين ({month_1}) و ({month_2})")
+
+          merged_report = pd.merge(
+              df1_f,
+              df2_f,
+              on=["الحساب الرئيسي", "الحساب الفرعي"],
+              how="outer",
+              suffixes=(f" ({month_1})", f" ({month_2})"),
+          ).fillna(0)
+
+          col_v1 = f"القيمة ({month_1})"
+          col_v2 = f"القيمة ({month_2})"
+          
+          if col_v1 in merged_report.columns and col_v2 in merged_report.columns:
+            merged_report["قيمة التغير"] = merged_report[col_v2] - merged_report[col_v1]
+            merged_report["نسبة التغيير (%)"] = (
+                (merged_report["قيمة التغير"] / merged_report[col_v1].replace(0, 1))
+                * 100
+            ).round(2)
+
+          st.dataframe(merged_report, use_container_width=True)
+
+          if not merged_report.empty and col_v1 in merged_report.columns:
+            st.markdown("---")
+            st.subheader("📈 تمثيل بياني للمقارنة بين الشهرين")
+            st.bar_chart(merged_report.set_index("الحساب الفرعي")[[col_v1, col_v2]])
+        else:
+          st.warning(
+              f"⚠️ لا توجد بيانات مسجلة للشهرين المختارين ({month_1}) أو"
+              f" ({month_2}) لهذه الشركة والفرع."
+          )
+    else:
+      st.warning("لا توجد شركات مسجلة بالنظام لعرض تقاريرها.")
