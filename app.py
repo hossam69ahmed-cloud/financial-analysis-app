@@ -181,7 +181,7 @@ else:
           " 2023, 2024**"
       )
 
-      # توفير زر لتحميل قالب جاهز
+      # توفير نموذج جاهز للتحميل
       template_df = pd.DataFrame({
           "البند": [
               "المبيعات",
@@ -194,8 +194,6 @@ else:
           "2024": [130000, 75000, 55000, 18000, 37000],
       })
 
-      # دالة لتحويل الشيت لملف Excel لتنزيله
-      @st.cache_data
       data_as_csv = template_df.to_csv(index=False).encode("utf-8-sig")
 
       st.download_button(
@@ -218,17 +216,14 @@ else:
           else:
             df = pd.read_excel(uploaded_file)
 
-          # قائمة الأعمدة الإجبارية المطلوبة
           required_columns = ["البند", "2023", "2024"]
 
-          # التحقق من أن كل الأعمدة المطلوبة موجودة في الملف المرفوع
           if all(col in df.columns for col in required_columns):
             st.success(
                 f"✅ تم التحقق من صحة الملف بنجاح للشركة: {selected_company} -"
                 f" الفرع: {selected_branch}"
             )
             st.dataframe(df)
-            # هنا يمكنك لاحقاً حفظ الـ DataFrame في قاعدة البيانات أو معالجتها
           else:
             st.error(
                 "❌ الملف المرفوع لا يطابق الهيكل المطلوب! يجب أن تحتوي الأعمدة"
@@ -244,7 +239,7 @@ else:
       st.warning(
           "يرجى الانتقال إلى صفحة 'إدارة الشركات والفروع' وإضافة شركة واحدة على"
           " الأقل أولاً."
-      )
+    )
 
   # --- شاشة لوحة التحليل المالي الأساسية ---
   elif menu == "لوحة التحليل المالي":
