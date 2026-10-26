@@ -36,15 +36,15 @@ def init_db():
         )
     """)
 
-  # جدول حفظ البيانات المالية للشركات والفروع
+  # جدول حفظ البيانات المالية (الشركة، الفرع، الشهر، الحساب، القيمة)
   cursor.execute("""
         CREATE TABLE IF NOT EXISTS financial_data (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             company_name TEXT,
             branch_name TEXT,
-            item TEXT,
-            val_2023 REAL,
-            val_2024 REAL
+            month TEXT,
+            account_name TEXT,
+            amount REAL
         )
     """)
 
@@ -161,9 +161,9 @@ else:
     else:
       st.info("لا توجد شركات مسجلة حتى الآن. يرجى إضافتها أولاً.")
 
-  # --- شاشة رفع بيانات الـ Excel للشركة والفرع مع الحفظ ---
+  # --- شاشة رفع بيانات الـ Excel المخصصة (الحساب والقيمة + الشهر) ---
   elif menu == "رفع بيانات الشركات (Excel)":
-    st.title("📁 رفع ملفات التحليل المالي للشركات")
+    st.title("📁 رفع ملفات قائمة الدخل للشركات")
 
     conn = sqlite3.connect("company_data.db")
     cursor = conn.cursor()
@@ -172,7 +172,9 @@ else:
     conn.close()
 
     if companies:
-      selected_company = st.selectbox("اختر الشركة", companies)
+      col_a, col_b, col_c = st.columns(3)
+      with col_a:
+        selected_company = st.selectbox("اختر الشركة", companies)
 
       conn = sqlite3.connect("company_data.db")
       cursor = conn.cursor()
@@ -183,39 +185,58 @@ else:
       branches = [row[0] for row in cursor.fetchall()]
       conn.close()
 
-      selected_branch = st.selectbox("اختر الفرع", branches)
+      with col_b:
+        selected_branch = st.selectbox("اختر الفرع", branches)
+
+      with col_c:
+        months_list = [
+            "يناير",
+            "فبراير",
+            "مارس",
+            "إبريل",
+            "مايو",
+            "يونيو",
+            "يوليو",
+            "أغسطس",
+            "سبتمبر",
+            "أكتوبر",
+            "نوفمبر",
+            "ديسمبر",
+        ]
+        selected_month = st.selectbox("اختر الشهر", months_list)
 
       st.markdown("---")
-      st.subheader("📥 نموذج شيت الـ Excel القياسي")
+      st.subheader("📥 نموذج شيت قائمة الدخل القياسي")
       st.write(
-          "يجب أن يحتوي ملف الـ Excel المرفوع على الأعمدة التالية بدقة: **البند,"
-          " 2023, 2024**"
+          "يجب أن يحتوي ملف الـ Excel على العمودين التاليين بدقة: **الحساب,"
+          " القيمة**"
       )
 
+      # القالب القياسي لبنود قائمة الدخل المطلوبة
       template_df = pd.DataFrame({
-          "البند": [
+          "الحساب": [
               "المبيعات",
-              "تكلفة المبيعات",
-              "مجمل الربح",
-              "المصاريف التشغيلية",
-              "صافي الربح",
+              "تكلفة البضاعة المباعة",
+              "المصاريف البيعية و التشغيلية",
+              "المصاريف العمومية و الادارية",
+              "الاهلاك",
+              "الضرائب",
           ],
-          "2023": [100000, 60000, 40000, 15000, 25000],
-          "2024": [130000, 75000, 55000, 18000, 37000],
+          "القيمة": [150000, 80000, 20000, 15000, 5000, 4000],
       })
 
       data_as_csv = template_df.to_csv(index=False).encode("utf-8-sig")
 
       st.download_button(
-          label="تحميل نموذج الشيت القياسي (CSV)",
+          label="تحميل نموذج شيت قائمة الدخل القياسي (CSV)",
           data=data_as_csv,
-          file_name="financial_template.csv",
+          file_name="income_statement_template.csv",
           mime="text/csv",
       )
 
       st.markdown("---")
       uploaded_file = st.file_uploader(
-          "ارفع الشيت المعبأ (يجب أن يطابق الهيكل القياسي)",
+          "ارفع الشيت المعبأ (يجب أن يحتوي على عمود 'الحساب' و 'القيمة')",
           type=["xlsx", "xls", "csv"],
       )
 
@@ -226,54 +247,57 @@ else:
           else:
             df = pd.read_excel(uploaded_file)
 
-          required_columns = ["البند", "2023", "2024"]
+          required_columns = ["الحساب", "القيمة"]
 
           if all(col in df.columns for col in required_columns):
             st.success(
-                f"✅ تم التحقق من صحة الملف بنجاح للشركة: {selected_company} -"
-                f" الفرع: {selected_branch}"
+                f"✅ تم التحقق بنجاح | الشركة: {selected_company} | الفرع:"
+                f" {selected_branch} | الشهر: {selected_month}"
             )
             st.dataframe(df)
 
-            if st.button("💾 حفظ البيانات في قاعدة البيانات"):
+            if st.button("💾 حفظ بيانات الشهر في قاعدة البيانات"):
               conn = sqlite3.connect("company_data.db")
               cursor = conn.cursor()
 
-              # حذف البيانات القديمة لنفس الشركة والفرع لعدم التكرار (اختياري)
+              # حذف بيانات نفس الشهر القديمة لنفس الشركة والفرع لعدم التكرار
               cursor.execute(
-                  "DELETE FROM financial_data WHERE company_name = ? AND"
-                  " branch_name = ?",
-                  (selected_company, selected_branch),
+                  """
+                                DELETE FROM financial_data 
+                                WHERE company_name = ? AND branch_name = ? AND month = ?
+                            """,
+                  (selected_company, selected_branch, selected_month),
               )
 
-              # إدخال البيانات الجديدة السطر تلو الآخر
+              # إدخال البنود الجديدة
               for _, row in df.iterrows():
                 cursor.execute(
                     """
-                                    INSERT INTO financial_data (company_name, branch_name, item, val_2023, val_2024)
+                                    INSERT INTO financial_data (company_name, branch_name, month, account_name, amount)
                                     VALUES (?, ?, ?, ?, ?)
                                 """,
                     (
                         selected_company,
                         selected_branch,
-                        row["البند"],
-                        row["2023"],
-                        row["2024"],
+                        selected_month,
+                        row["الحساب"],
+                        row["القيمة"],
                     ),
                 )
 
               conn.commit()
               conn.close()
               st.success(
-                  "🎉 تم حفظ البيانات المالية في قاعدة البيانات بنجاح تام!"
+                  f"🎉 تم حفظ بيانات شهر ({selected_month}) بنجاح تام في قاعدة"
+                  " البيانات!"
               )
           else:
             st.error(
-                "❌ الملف المرفوع لا يطابق الهيكل المطلوب! يجب أن تحتوي الأعمدة"
-                f" على: {required_columns}"
+                "❌ الأعمدة غير مطابقة! يجب أن يحتوي الشيت على الأعمدة الآتية:"
+                f" {required_columns}"
             )
             st.info(
-                "💡 نصيحة: قم بتحميل النموذج القياسي بالأعلى واستخدمه مباشرة."
+                "💡 نصيحة: حمل النموذج القياسي من الزر أعلاه واملأه بنفس الأسماء."
             )
         except Exception as e:
           st.error(f"حدث خطأ أثناء قراءة الملف: {e}")
@@ -283,11 +307,10 @@ else:
           " الأقل أولاً."
       )
 
-  # --- شاشة لوحة التحليل المالي وعرض البيانات المخزنة ---
+  # --- شاشة لوحة التحليل المالي وعرض التقارير الشهرية ---
   elif menu == "لوحة التحليل المالي":
-    st.title("📊 لوحة تحكم التحليل المالي والتقارير")
+    st.title("📊 لوحة تحكم التحليل المالي وقوائم الدخل")
 
-    # اختيار الشركة والفرع لعرض تقاريرها
     conn = sqlite3.connect("company_data.db")
     cursor = conn.cursor()
     cursor.execute("SELECT DISTINCT company_name FROM companies_branches")
@@ -295,9 +318,11 @@ else:
     conn.close()
 
     if companies:
-      col_c1, col_c2 = st.columns(2)
-      with col_c1:
-        view_company = st.selectbox("اختر الشركة للعرض", companies, key="v_comp")
+      col_v1, col_v2, col_v3 = st.columns(3)
+      with col_v1:
+        view_company = st.selectbox(
+            "اختر الشركة للعرض", companies, key="v_comp"
+        )
 
       conn = sqlite3.connect("company_data.db")
       cursor = conn.cursor()
@@ -308,47 +333,83 @@ else:
       branches = [row[0] for row in cursor.fetchall()]
       conn.close()
 
-      with col_c2:
-        if branches:
-          view_branch = st.selectbox(
-              "اختر الفرع للعرض", branches, key="v_branch"
-          )
-        else:
-          view_branch = ""
+      with col_v2:
+        view_branch = st.selectbox(
+            "اختر الفرع للعرض", branches if branches else [""], key="v_branch"
+        )
+
+      with col_v3:
+        months_list = [
+            "يناير",
+            "فبراير",
+            "مارس",
+            "إبريل",
+            "مايو",
+            "يونيو",
+            "يوليو",
+            "أغسطس",
+            "سبتمبر",
+            "أكتوبر",
+            "نوفمبر",
+            "ديسمبر",
+        ]
+        view_month = st.selectbox("اختر الشهر للعرض", months_list, key="v_month")
 
       st.markdown("---")
-      # جلب البيانات من قاعدة البيانات للشركة والفرع المختارين
+
+      # جلب البيانات من قاعدة البيانات للشهر والشركة والفرع المحددين
       conn = sqlite3.connect("company_data.db")
       cursor = conn.cursor()
       cursor.execute(
           """
-                SELECT item as "البند", val_2023 as "2023", val_2024 as "2024" 
+                SELECT account_name as "الحساب", amount as "القيمة" 
                 FROM financial_data 
-                WHERE company_name = ? AND branch_name = ?
+                WHERE company_name = ? AND branch_name = ? AND month = ?
             """,
-          (view_company, view_branch),
+          (view_company, view_branch, view_month),
       )
       rows = cursor.fetchall()
       conn.close()
 
       if rows:
         st.subheader(
-            f"📄 القوائم المالية للشركة: {view_company} (فرع: {view_branch})"
+            f"📄 قائمة الدخل لشهر ({view_month}) - الشركة: {view_company}"
+            f" (فرع: {view_branch})"
         )
-        df_display = pd.DataFrame(
-            rows, columns=["البند", "2023", "2024"]
-        )
+        df_display = pd.DataFrame(rows, columns=["الحساب", "القيمة"])
         st.table(df_display)
 
-        # رسوم بيانية سريعة أو مؤشرات
+        # حساب مؤشرات سريعة (مجمل الربح وصافي الربح بناءً على البنود)
+        try:
+          # تحويل البيانات إلى قاموس لتسهيل العمليات الحسابية
+          fin_dict = dict(zip(df_display["الحساب"], df_display["القيمة"]))
+          sales = fin_dict.get("المبيعات", 0)
+          cogs = fin_dict.get("تكلفة البضاعة المباعة", 0)
+          gp = sales - cogs  # مجمل الربح
+          opex = fin_dict.get("المصاريف البيعية و التشغيلية", 0) + fin_dict.get(
+              "المصاريف العمومية و الادارية", 0
+          )
+          depr = fin_dict.get("الاهلاك", 0)
+          net_before_tax = gp - opex - depr
+          taxes = fin_dict.get("الضرائب", 0)
+          net_profit = net_before_tax - taxes
+
+          st.markdown("---")
+          st.subheader("💡 مؤشرات الأداء المالي التلقائية للشهر")
+          mcol1, mcol2, mcol3 = st.columns(3)
+          mcol1.metric("مجمل الربح (Gross Profit)", f"{gp:,.2f}")
+          mcol2.metric("صافي الربح قبل الضرائب", f"{net_before_tax:,.2f}")
+          mcol3.metric("صافي الربح النهائي (Net Profit)", f"{net_profit:,.2f}")
+        except Exception:
+          pass
+
         st.markdown("---")
-        st.subheader("📈 مقارنة أداء البنود بين عامي 2023 و 2024")
-        st.bar_chart(df_display.set_index("البند"))
+        st.subheader("📈 تمثيل بياني لبنود الحسابات")
+        st.bar_chart(df_display.set_index("الحساب"))
       else:
         st.info(
-            f"ℹ️ لا توجد بيانات مرفوعة حتى الآن للشركة ({view_company}) - الفرع"
-            f" ({view_branch}). انتقل إلى صفحة 'رفع بيانات الشركات (Excel)' لرفع"
-            " ملفها."
+            f"ℹ️ لا توجد بيانات مسجلة لشهر ({view_month}) للشركة ({view_company})"
+            f" - فرع ({view_branch})."
         )
     else:
       st.warning("لا توجد شركات مسجلة بالنظام لعرض تقاريرها.")
