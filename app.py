@@ -36,7 +36,7 @@ def init_db():
         )
     """)
 
-  # جدول البيانات المالية (الشركة، الفرع، الشهر، القسم الرئيسي، الحساب الفرعي، القيمة)
+  # جدول البيانات المالية الشاملة
   cursor.execute("""
         CREATE TABLE IF NOT EXISTS financial_data_detailed (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -111,9 +111,10 @@ else:
   menu = st.sidebar.radio(
       "القائمة الرئيسية",
       [
-          "📈 التقارير المالية والتحليل",
+          "📈 التقارير المالية والتحليل التلقائي",
           "🏢 إدارة الشركات والفروع",
-          "📁 رفع بيانات الشركات (Excel)",
+          "📁 رفع شيت الحسابات الشامل (Excel)",
+          "🗑️ حذف وإدارة البيانات",
       ],
   )
 
@@ -161,9 +162,9 @@ else:
     else:
       st.info("لا توجد شركات مسجلة حتى الآن.")
 
-  # --- شاشة رفع بيانات الـ Excel المتقدمة ---
-  elif menu == "📁 رفع بيانات الشركات (Excel)":
-    st.title("📁 رفع ملفات الحسابات المالية (رئيسي وفرعي)")
+  # --- شاشة رفع شيت الحسابات الشامل ---
+  elif menu == "📁 رفع شيت الحسابات الشامل (Excel)":
+    st.title("📁 رفع شيت الحسابات الشامل (يوزع تلقائياً على كل التقارير)")
 
     conn = sqlite3.connect("company_data.db")
     cursor = conn.cursor()
@@ -206,47 +207,64 @@ else:
         selected_month = st.selectbox("اختر الشهر", months_list)
 
       st.markdown("---")
-      st.subheader("📥 نموذج الشيت القياسي المطلوب")
+      st.subheader("📥 نموذج الشيت القياسي الشامل")
       st.write(
-          "يجب أن يحتوي ملف الـ Excel على الأعمدة الثلاثة التالية بدقة:"
+          "ارفع شيت واحد يحتوي على كل حسابات الشركة (قائمة دخل + ميزانية + مصاريف)"
+          " بالأعمدة الثلاثة:"
           " **الحساب الرئيسي، الحساب الفرعي، القيمة**"
       )
 
-      # قالب قياسي جاهز للتحميل
       template_df = pd.DataFrame({
           "الحساب الرئيسي": [
-              "المبيعات",
               "المبيعات",
               "تكلفة البضاعة المباعة",
               "مصاريف بيعية و تشغيلية",
               "مصاريف عمومية و ادارية",
               "الاهلاك",
               "الضرائب",
+              "الأصول غير المتداولة",
+              "الأصول المتداولة",
+              "التزامات متداولة",
+              "حقوق الملكية",
           ],
           "الحساب الفرعي": [
-              "مبيعات محليه",
-              "مبيعات تصدير",
+              "مبيعات محلية",
               "مشتريات مواد خام",
-              "مرتبات رجال المعارض",
+              "مرتبات المعارض",
               "إيجار الإدارة",
-              "إهلاك الأصول الثابتة",
+              "إهلاك الأصول",
               "ضريبة الدخل",
+              "الآلات والمعدات",
+              "النقدية بالبنك",
+              "الموردون",
+              "رأس المال",
           ],
-          "القيمة": [100000, 50000, 80000, 20000, 15000, 5000, 4000],
+          "القيمة": [
+              150000,
+              80000,
+              20000,
+              15000,
+              5000,
+              4000,
+              300000,
+              50000,
+              30000,
+              320000,
+          ],
       })
 
       data_as_csv = template_df.to_csv(index=False).encode("utf-8-sig")
 
       st.download_button(
-          label="تحميل نموذج الشيت القياسي (CSV)",
+          label="تحميل نموذج الشيت الشامل القياسي (CSV)",
           data=data_as_csv,
-          file_name="detailed_financial_template.csv",
+          file_name="comprehensive_financial_template.csv",
           mime="text/csv",
       )
 
       st.markdown("---")
       uploaded_file = st.file_uploader(
-          "ارفع الشيت المعبأ (أعمدة: الحساب الرئيسي، الحساب الفرعي، القيمة)",
+          "ارفع الشيت الشامل (أعمدة: الحساب الرئيسي، الحساب الفرعي، القيمة)",
           type=["xlsx", "xls", "csv"],
       )
 
@@ -266,11 +284,10 @@ else:
             )
             st.dataframe(df)
 
-            if st.button("💾 حفظ البيانات في قاعدة البيانات"):
+            if st.button("💾 حفظ الشيت الشامل في قاعدة البيانات"):
               conn = sqlite3.connect("company_data.db")
               cursor = conn.cursor()
 
-              # مسح بيانات نفس الشهر القديمة لنفس الشركة والفرع لعدم التكرار
               cursor.execute(
                   """
                                 DELETE FROM financial_data_detailed 
@@ -279,7 +296,6 @@ else:
                   (selected_company, selected_branch, selected_month),
               )
 
-              # إدخال السطور الجديدة
               for _, row in df.iterrows():
                 cursor.execute(
                     """
@@ -299,7 +315,8 @@ else:
               conn.commit()
               conn.close()
               st.success(
-                  f"🎉 تم حفظ بيانات شهر ({selected_month}) بنجاح تام!"
+                  f"🎉 تم حفظ وترحيل بيانات شهر ({selected_month}) لكل التقارير"
+                  " بنجاح!"
               )
           else:
             st.error(
@@ -314,9 +331,13 @@ else:
           " الأقل أولاً."
       )
 
-  # --- شاشة التقارير المالية والتحليل الشامل ---
-  elif menu == "📈 التقارير المالية والتحليل":
-    st.title("📊 لوحة التقارير المالية المتقدمة")
+  # --- شاشة حذف وإدارة البيانات ---
+  elif menu == "🗑️ حذف وإدارة البيانات":
+    st.title("🗑️ إدارة وحذف البيانات المالية المسجلة")
+    st.write(
+        "يمكنك من خلال هذه الصفحة حذف بيانات شهر معين لشركة وفرع محدد لإعادة"
+        " رفعها أو تعديلها."
+    )
 
     conn = sqlite3.connect("company_data.db")
     cursor = conn.cursor()
@@ -325,7 +346,103 @@ else:
     conn.close()
 
     if companies:
-      # فلاتر اختيار الشركة والفرع والتقرير المطلوب
+      d_col1, d_col2, d_col3 = st.columns(3)
+      with d_col1:
+        del_company = st.selectbox(
+            "اختر الشركة للحذف", companies, key="del_comp"
+        )
+
+      conn = sqlite3.connect("company_data.db")
+      cursor = conn.cursor()
+      cursor.execute(
+          "SELECT branch_name FROM companies_branches WHERE company_name = ?",
+          (del_company,),
+      )
+      branches = [row[0] for row in cursor.fetchall()]
+      conn.close()
+
+      with d_col2:
+        del_branch = st.selectbox(
+            "اختر الفرع", branches if branches else [""], key="del_branch"
+        )
+
+      with d_col3:
+        months_list = [
+            "يناير",
+            "فبراير",
+            "مارس",
+            "إبريل",
+            "مايو",
+            "يونيو",
+            "يوليو",
+            "أغسطس",
+            "سبتمبر",
+            "أكتوبر",
+            "نوفمبر",
+            "ديسمبر",
+        ]
+        del_month = st.selectbox("اختر الشهر المراد حذفه", months_list, key="del_month")
+
+      st.markdown("---")
+
+      # عرض البيانات الحالية لهذا الشهر قبل الحذف للتأكد
+      conn = sqlite3.connect("company_data.db")
+      cursor = conn.cursor()
+      cursor.execute(
+          """
+                SELECT main_account as "الحساب الرئيسي", sub_account as "الحساب الفرعي", amount as "القيمة"
+                FROM financial_data_detailed 
+                WHERE company_name = ? AND branch_name = ? AND month = ?
+            """,
+          (del_company, del_branch, del_month),
+      )
+      current_data = cursor.fetchall()
+      conn.close()
+
+      if current_data:
+        st.warning(
+            f"⚠️ توجد بيانات مسجلة لشهر ({del_month}) للشركة ({del_company}) -"
+            f" الفرع ({del_branch}). عدد البنود المسجلة: {len(current_data)}"
+        )
+        df_current = pd.DataFrame(
+            current_data, columns=["الحساب الرئيسي", "الحساب الفرعي", "القيمة"]
+        )
+        st.dataframe(df_current, use_container_width=True)
+
+        if st.button("🗑️ تأكيد وحذف بيانات هذا الشهر نهائياً"):
+          conn = sqlite3.connect("company_data.db")
+          cursor = conn.cursor()
+          cursor.execute(
+              """
+                        DELETE FROM financial_data_detailed 
+                        WHERE company_name = ? AND branch_name = ? AND month = ?
+                    """,
+              (del_company, del_branch, del_month),
+          )
+          conn.commit()
+          conn.close()
+          st.success(
+              f"✅ تم حذف بيانات شهر ({del_month}) بنجاح تام من قاعدة البيانات!"
+          )
+          st.rerun()
+      else:
+        st.info(
+            f"ℹ️ لا توجد بيانات مسجلة أساساً لشهر ({del_month}) لهذه الشركة والفرع."
+        )
+    else:
+      st.warning("لا توجد شركات مسجلة بالنظام.")
+
+  # --- شاشة التقارير المالية المتقدمة والتحليل التلقائي ---
+  elif menu == "📈 التقارير المالية والتحليل التلقائي":
+    st.title("📊 لوحة التقارير المالية الموزعة تلقائياً")
+
+    conn = sqlite3.connect("company_data.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT DISTINCT company_name FROM companies_branches")
+    companies = [row[0] for row in cursor.fetchall()]
+    conn.close()
+
+    if companies:
       col_f1, col_f2, col_f3 = st.columns(3)
       with col_f1:
         view_company = st.selectbox(
@@ -359,7 +476,6 @@ else:
 
       st.markdown("---")
 
-      # اختيار الشهرين للمقارنة وحساب التغير
       months_list = [
           "يناير",
           "فبراير",
@@ -376,13 +492,13 @@ else:
       ]
       col_m1, col_m2 = st.columns(2)
       with col_m1:
-        month_1 = st.selectbox("اختر الشهر الأول (الأساس / القديم)", months_list, index=0)
+        month_1 = st.selectbox("اختر الشهر الأول (الأساس)", months_list, index=0)
       with col_m2:
-        month_2 = st.selectbox("اختر الشهر الثاني (المقارنة / الحديث)", months_list, index=1)
+        month_2 = st.selectbox("اختر الشهر الثاني (المقارنة)", months_list, index=1)
 
       st.markdown("---")
 
-      # دالة لجلب بيانات شهر معين
+
       def get_month_data(m_name):
         conn = sqlite3.connect("company_data.db")
         cursor = conn.cursor()
@@ -394,113 +510,4 @@ else:
                 """,
             (view_company, view_branch, m_name),
         )
-        res = cursor.fetchall()
-        conn.close()
-        return pd.DataFrame(res, columns=["الحساب الرئيسي", "الحساب الفرعي", "القيمة"])
-
-      df1 = get_month_data(month_1)
-      df2 = get_month_data(month_2)
-
-      if not df1.empty or not df2.empty:
-        st.subheader(f"📄 {report_type} | مقارنة بين ({month_1}) و ({month_2})")
-
-        # معالجة التقارير بناءً على الاختيار
-        if report_type == "تقرير قائمة الدخل":
-          # تصفية بنود قائمة الدخل (المبيعات، التكلفة، المصاريف، الإهلاك، الضرائب)
-          valid_main_accounts = [
-              "المبيعات",
-              "تكلفة البضاعة المباعة",
-              "مصاريف بيعية و تشغيلية",
-              "مصاريف عمومية و ادارية",
-              "الاهلاك",
-              "الضرائب",
-          ]
-          df1_filtered = df1[df1["الحساب الرئيسي"].isin(valid_main_accounts)] if not df1.empty else pd.DataFrame(columns=["الحساب الرئيسي", "الحساب الفرعي", "القيمة"])
-          df2_filtered = df2[df2["الحساب الرئيسي"].isin(valid_main_accounts)] if not df2.empty else pd.DataFrame(columns=["الحساب الرئيسي", "الحساب الفرعي", "القيمة"])
-
-          # دمج الشهرين لعرض مقارنة تفصيلية للحسابات الفرعية والرئيسية
-          merged_df = pd.merge(
-              df1_filtered,
-              df2_filtered,
-              on=["الحساب الرئيسي", "الحساب الفرعي"],
-              how="outer",
-              suffixes=(f" ({month_1})", f" ({month_2})"),
-          ).fillna(0)
-
-          col_val1 = f"القيمة ({month_1})"
-          col_val2 = f"القيمة ({month_2})"
-
-          merged_df["قيمة التغير"] = merged_df[col_val2] - merged_df[col_val1]
-          merged_df["نسبة التغيير (%)"] = (
-              (merged_df["قيمة التغير"] / merged_df[col_val1].replace(0, 1))
-              * 100
-          ).round(2)
-
-          st.dataframe(merged_df, use_container_width=True)
-
-          # حساب صافي الدخل والمؤشرات
-          sales_1 = df1_filtered[df1_filtered["الحساب الرئيسي"] == "المبيعات"]["القيمة"].sum() if not df1_filtered.empty else 0
-          sales_2 = df2_filtered[df2_filtered["الحساب الرئيسي"] == "المبيعات"]["القيمة"].sum() if not df2_filtered.empty else 0
-          
-          st.markdown("### 💡 ملخص مؤشرات قائمة الدخل")
-          sc1, sc2 = st.columns(2)
-          sc1.metric(f"إجمالي مبيعات {month_1}", f"{sales_1:,.2f}")
-          sc2.metric(f"إجمالي مبيعات {month_2}", f"{sales_2:,.2f}", delta=f"{sales_2 - sales_1:,.2f}")
-
-        elif report_type == "تقرير تحليل المصاريف":
-          expense_accounts = [
-              "مصاريف بيعية و تشغيلية",
-              "مصاريف عمومية و ادارية",
-              "الاهلاك",
-          ]
-          df1_exp = df1[df1["الحساب الرئيسي"].isin(expense_accounts)] if not df1.empty else pd.DataFrame()
-          df2_exp = df2[df2["الحساب الرئيسي"].isin(expense_accounts)] if not df2.empty else pd.DataFrame()
-
-          merged_exp = pd.merge(
-              df1_exp,
-              df2_exp,
-              on=["الحساب الرئيسي", "الحساب الفرعي"],
-              how="outer",
-              suffixes=(f" ({month_1})", f" ({month_2})"),
-          ).fillna(0)
-
-          col_val1 = f"القيمة ({month_1})"
-          col_val2 = f"القيمة ({month_2})"
-          merged_exp["قيمة التغير"] = merged_exp[col_val2] - merged_exp[col_val1]
-          merged_exp["نسبة التغيير (%)"] = (
-              (merged_exp["قيمة التغير"] / merged_exp[col_val1].replace(0, 1))
-              * 100
-          ).round(2)
-
-          st.subheader("📊 تحليل المصاريف التشغيلية والإدارية")
-          st.dataframe(merged_exp, use_container_width=True)
-          if not merged_exp.empty:
-            st.bar_chart(merged_exp.set_index("الحساب الفرعي")[[col_val1, col_val2]])
-
-        else:
-          # لبقية التقارير (الميزانية العمومية / التدفقات النقدية إذا لم ترفع تفاصيلها بعد)
-          merged_general = pd.merge(
-              df1,
-              df2,
-              on=["الحساب الرئيسي", "الحساب الفرعي"],
-              how="outer",
-              suffixes=(f" ({month_1})", f" ({month_2})"),
-          ).fillna(0)
-          col_val1 = f"القيمة ({month_1})"
-          col_val2 = f"القيمة ({month_2})"
-          merged_general["قيمة التغير"] = merged_general[col_val2] - merged_general[col_val1]
-          merged_general["نسبة التغيير (%)"] = (
-              (merged_general["قيمة التغير"] / merged_general[col_val1].replace(0, 1))
-              * 100
-          ).round(2)
-
-          st.info(f"عرض بيانات {report_type} بناءً على الحسابات المسجلة للشهرين:")
-          st.dataframe(merged_general, use_container_width=True)
-
-      else:
-        st.warning(
-            f"⚠️ لا توجد بيانات مسجلة للشهرين المختارين ({month_1}) أو"
-            f" ({month_2}) لهذه الشركة والفرع."
-        )
-    else:
-      st.warning("لا توجد شركات مسجلة بالنظام لعرض تقاريرها.")
+        res
