@@ -24,9 +24,9 @@ def init_db():
             branch TEXT
         )
     """)
-  # إضافة يوزر افتراضي رئيسي (Super Admin) إذا لم يكن موجوداً
+  # إضافة يوزر افتراضي رئيسي (Super Admin) بشكل صحيح
   cursor.execute("""
-        OR IGNORE INTO users (username, password, role, company, branch)
+        INSERT OR IGNORE INTO users (username, password, role, company, branch)
         VALUES ('admin', '123456', 'Super Admin', 'الكل', 'الكل')
     """)
   conn.commit()
@@ -88,7 +88,4 @@ else:
     st.rerun()
 
   st.title("📊 لوحة تحكم التحليل المالي والشركات المتعددة")
-  st.write(
-      "تم تفعيل نظام الصلاحيات وقاعدة البيانات بنجاح. سنقوم الآن بإضافة شاشات"
-      " إدارة الشركات والفروع ورفع البيانات الخاصة بكل شركة."
-  )
+  st.write("تم تفعيل نظام الصلاحيات وقاعدة البيانات بنجاح.")
