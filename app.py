@@ -149,11 +149,11 @@ else:
     else:
       st.info("لا توجد شركات مسجلة حتى الآن. يرجى إضافتها أولاً.")
 
-  # --- شاشة رفع بيانات الـ Excel للشركة والفرع ---
+  # --- شاشة رفع بيانات الـ Excel للشركة والفرع مع التحقق الإجباري ---
   elif menu == "رفع بيانات الشركات (Excel)":
     st.title("📁 رفع ملفات التحليل المالي للشركات")
 
-    # جلب الشركات والفروع المسجلة لاختيارها
+    # جلب الشركات والفروع المسجلة
     conn = sqlite3.connect("company_data.db")
     cursor = conn.cursor()
     cursor.execute("SELECT DISTINCT company_name FROM companies_branches")
@@ -174,17 +174,72 @@ else:
 
       selected_branch = st.selectbox("اختر الفرع", branches)
 
+      st.markdown("---")
+      st.subheader("📥 نموذج شيت الـ Excel القياسي")
+      st.write(
+          "يجب أن يحتوي ملف الـ Excel المرفوع على الأعمدة التالية بدقة: **البند,"
+          " 2023, 2024**"
+      )
+
+      # توفير زر لتحميل قالب جاهز
+      template_df = pd.DataFrame({
+          "البند": [
+              "المبيعات",
+              "تكلفة المبيعات",
+              "مجمل الربح",
+              "المصاريف التشغيلية",
+              "صافي الربح",
+          ],
+          "2023": [100000, 60000, 40000, 15000, 25000],
+          "2024": [130000, 75000, 55000, 18000, 37000],
+      })
+
+      # دالة لتحويل الشيت لملف Excel لتنزيله
+      @st.cache_data
+      data_as_csv = template_df.to_csv(index=False).encode("utf-8-sig")
+
+      st.download_button(
+          label="تحميل نموذج الشيت القياسي (CSV/Excel)",
+          data=data_as_csv,
+          file_name="financial_template.csv",
+          mime="text/csv",
+      )
+
+      st.markdown("---")
       uploaded_file = st.file_uploader(
-          "ارفع ملف الـ Excel المالي للشركة والفرع المحدد", type=["xlsx", "xls"]
+          "ارفع الشيت المعبأ (يجب أن يطابق الهيكل القياسي)",
+          type=["xlsx", "xls", "csv"],
       )
 
       if uploaded_file is not None:
-        df = pd.read_excel(uploaded_file)
-        st.success(
-            f"تم رفع الملف بنجاح للشركة: {selected_company} - الفرع:"
-            f" {selected_branch}"
-        )
-        st.dataframe(df)
+        try:
+          if uploaded_file.name.endswith(".csv"):
+            df = pd.read_csv(uploaded_file)
+          else:
+            df = pd.read_excel(uploaded_file)
+
+          # قائمة الأعمدة الإجبارية المطلوبة
+          required_columns = ["البند", "2023", "2024"]
+
+          # التحقق من أن كل الأعمدة المطلوبة موجودة في الملف المرفوع
+          if all(col in df.columns for col in required_columns):
+            st.success(
+                f"✅ تم التحقق من صحة الملف بنجاح للشركة: {selected_company} -"
+                f" الفرع: {selected_branch}"
+            )
+            st.dataframe(df)
+            # هنا يمكنك لاحقاً حفظ الـ DataFrame في قاعدة البيانات أو معالجتها
+          else:
+            st.error(
+                "❌ الملف المرفوع لا يطابق الهيكل المطلوب! يجب أن تحتوي الأعمدة"
+                f" على: {required_columns}"
+            )
+            st.info(
+                "💡 نصيحة: قم بتحميل النموذج القياسي بالأعلى واكتب البيانات عليه"
+                " مباشرة لتجنب الأخطاء."
+            )
+        except Exception as e:
+          st.error(f"حدث خطأ أثناء قراءة الملف: {e}")
     else:
       st.warning(
           "يرجى الانتقال إلى صفحة 'إدارة الشركات والفروع' وإضافة شركة واحدة على"
@@ -198,7 +253,6 @@ else:
         "هنا يتم عرض قوائم الدخل، الميزانية، والنسب المالية المرتبطة بالشركات"
         " والفروع."
     )
-    # يمكنك وضع الجداول الإفتراضية أو المتقدمة الخاصة بك هنا
     data_default = {
         "البند": ["المبيعات", "تكلفة المبيعات", "مجمل الربح", "صافي الربح"],
         "2023": [100000, 60000, 40000, 25000],
