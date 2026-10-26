@@ -14,6 +14,7 @@ st.set_page_config(
 def init_db():
   conn = sqlite3.connect("company_data.db")
   cursor = conn.cursor()
+
   # جدول المستخدمين والصلاحيات
   cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
@@ -24,11 +25,22 @@ def init_db():
             branch TEXT
         )
     """)
+
+  # جدول الشركات والفروع
+  cursor.execute("""
+        CREATE TABLE IF NOT EXISTS companies_branches (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_name TEXT,
+            branch_name TEXT
+        )
+    """)
+
   # إضافة يوزر افتراضي رئيسي (Super Admin) بشكل صحيح
   cursor.execute("""
         INSERT OR IGNORE INTO users (username, password, role, company, branch)
         VALUES ('admin', '123456', 'Super Admin', 'الكل', 'الكل')
     """)
+
   conn.commit()
   conn.close()
 
@@ -78,14 +90,62 @@ if not st.session_state.logged_in:
     )
 
 else:
-  # --- لوحة التحكم بعد تسجيل الدخول ---
+  # --- القائمة الجانبية ولوحة التحكم بعد تسجيل الدخول ---
   st.sidebar.title(f"مرحباً، {st.session_state.username}")
   st.sidebar.write(f"الصلاحية: **{st.session_state.role}**")
   st.sidebar.write(f"الشركة: **{st.session_state.company}**")
+
+  menu = st.sidebar.radio(
+      "القائمة الرئيسية", ["لوحة التحليل المالي", "إدارة الشركات والفروع"]
+  )
 
   if st.sidebar.button("تسجيل الخروج"):
     st.session_state.logged_in = False
     st.rerun()
 
-  st.title("📊 لوحة تحكم التحليل المالي والشركات المتعددة")
-  st.write("تم تفعيل نظام الصلاحيات وقاعدة البيانات بنجاح.")
+  # --- شاشة إدارة الشركات والفروع ---
+  if menu == "إدارة الشركات والفروع":
+    st.title("🏢 إدارة الشركات والفروع")
+
+    with st.form("add_company_form"):
+      st.subheader("إضافة شركة أو فرع جديد")
+      new_company = st.text_input("اسم الشركة")
+      new_branch = st.text_input("اسم الفرع")
+      submit_button = st.form_submit_button("حفظ وإضافة")
+
+      if submit_button:
+        if new_company and new_branch:
+          conn = sqlite3.connect("company_data.db")
+          cursor = conn.cursor()
+          cursor.execute(
+              "INSERT INTO companies_branches (company_name, branch_name) VALUES"
+              " (?, ?)",
+              (new_company, new_branch),
+          )
+          conn.commit()
+          conn.close()
+          st.success(
+              f"تمت إضافة الشركة ({new_company}) والفرع ({new_branch}) بنجاح!"
+          )
+        else:
+          st.warning("يرجى إدخال اسم الشركة واسم الفرع معاً.")
+
+    st.subheader("📋 الشركات والفروع المسجلة بالنظام")
+    conn = sqlite3.connect("company_data.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT company_name, branch_name FROM companies_branches")
+    rows = cursor.fetchall()
+    conn.close()
+
+    if rows:
+      for idx, row in enumerate(rows, 1):
+        st.write(f"{idx}. الشركة: **{row[0]}** ــ الفرع: **{row[1]}**")
+    else:
+      st.info("لا توجد شركات مسجلة حتى الآن.")
+
+  # --- شاشة لوحة التحليل المالي ---
+  elif menu == "لوحة التحليل المالي":
+    st.title("📊 لوحة تحكم التحليل المالي والتقارير")
+    st.write(
+        "هنا سيتم عرض الجداول وقوائم الدخل والميزانيات الخاصة بكل شركة وفروعها."
+    )
