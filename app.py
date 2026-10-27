@@ -19,12 +19,12 @@ from src.schema import kind_of, label
 from src.template import build_workbook, template_bytes
 from src.utils import fmt_value, format_frame, slug
 
-st.set_page_config(page_title="المحلل المالي | Financial Analyzer", layout="wide")
+st.set_page_config(page_title="Financial analysis Tech-Builder", layout="wide")
 
-# ------------------------------------------------------------------ Top Header: Language & Navigation
-col_title, col_lang = st.columns([4, 1])
+# ------------------------------------------------------------------ Top Header: Language & Title
+col_left, col_center, col_right = st.columns([1, 4, 1])
 
-with col_lang:
+with col_right:
     lang_option = st.selectbox("Language / اللغة", ["العربية", "English"])
 lang_code = "ar" if lang_option == "العربية" else "en"
 
@@ -46,8 +46,10 @@ else:
         unsafe_allow_html=True,
     )
 
-with col_title:
-    st.title("📊 المحلل المالي" if lang_code == "ar" else "📊 Financial Analyzer")
+with col_center:
+    st.markdown("<h1 style='text-align: center;'>📊 Financial analysis Tech-Builder</h1>", unsafe_allow_html=True)
+
+st.markdown("---")
 
 # ------------------------------------------------------------------ state
 if "companies" not in st.session_state:
@@ -71,19 +73,23 @@ def show(df: pd.DataFrame, kind: str | None = None):
     st.dataframe(format_frame(df, kind))
 
 
-# ------------------------------------------------------------------ Top Main Menu (Horizontal)
+# ------------------------------------------------------------------ Top Centered Main Menu (Horizontal)
 nav_titles = (
     ["إدارة الشركات", "تحليل شركة", "مقارنة شركات", "التقارير"]
     if lang_code == "ar"
     else ["Companies Management", "Company Analysis", "Compare Companies", "Reports"]
 )
 
-page = st.radio(
-    "القائمة الرئيسية" if lang_code == "ar" else "Main Menu",
-    nav_titles,
-    horizontal=True,
-)
-st.caption(f"{'عدد الشركات المحفوظة' if lang_code == 'ar' else 'Saved Companies'}: {len(companies)}")
+# وضع القائمة الرئيسية في منتصف الشاشة باستخدام الأعمدة
+menu_col1, menu_col2, menu_col3 = st.columns([1, 6, 1])
+with menu_col2:
+    page = st.radio(
+        "القائمة الرئيسية" if lang_code == "ar" else "Main Menu",
+        nav_titles,
+        horizontal=True,
+    )
+    st.markdown(f"<p style='text-align: center; color: gray;'>{'عدد الشركات المحفوظة' if lang_code == 'ar' else 'Saved Companies'}: {len(companies)}</p>", unsafe_allow_html=True)
+
 st.markdown("---")
 
 
@@ -93,7 +99,10 @@ def page_companies():
     st.write("أضف بيانات الشركة بإحدى الطرق: رفع ملف Excel، أو إدخال يدوي داخل البرنامج، أو بيانات تجريبية." if lang_code == "ar" else "Add company data via Excel upload, manual entry, or sample data.")
 
     tab_titles = ["رفع ملف Excel", "إدخال / تعديل يدوي", "الشركات المحفوظة"] if lang_code == "ar" else ["Excel Upload", "Manual Entry", "Saved Companies"]
-    tab_selection = st.radio("الأقسام", tab_titles, horizontal=True, label_visibility="collapsed")
+    
+    tab_col1, tab_col2, tab_col3 = st.columns([1, 5, 1])
+    with tab_col2:
+        tab_selection = st.radio("الأقسام", tab_titles, horizontal=True, label_visibility="collapsed")
     st.markdown("---")
 
     if tab_selection == tab_titles[0]:
@@ -203,7 +212,9 @@ def page_analysis():
         st.markdown(f"- {t}")
 
     sub_tabs = ["قائمة الدخل", "الميزانية العمومية", "النسب المالية"] if lang_code == "ar" else ["Income Statement", "Balance Sheet", "Financial Ratios"]
-    sub_sel = st.radio("الأقسام", sub_tabs, horizontal=True, label_visibility="collapsed")
+    sub_col1, sub_col2, sub_col3 = st.columns([1, 5, 1])
+    with sub_col2:
+        sub_sel = st.radio("الأقسام", sub_tabs, horizontal=True, label_visibility="collapsed")
     st.markdown("---")
 
     inc, bs = income_statement(c), balance_sheet(c)
