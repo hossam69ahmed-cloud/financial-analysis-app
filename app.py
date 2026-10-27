@@ -21,7 +21,7 @@ from src.utils import fmt_value, format_frame, slug
 
 st.set_page_config(page_title="Financial analysis Tech-Builder", layout="wide")
 
-# ------------------------------------------------------------------ Top Header: Language & Title
+# ------------------------------------------------------------------ Top Header: Language & Title (Centered, No Icon)
 col_left, col_center, col_right = st.columns([1, 4, 1])
 
 with col_right:
@@ -47,7 +47,7 @@ else:
     )
 
 with col_center:
-    st.markdown("<h1 style='text-align: center;'>📊 Financial analysis Tech-Builder</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'>Financial analysis Tech-Builder</h1>", unsafe_allow_html=True)
 
 st.markdown("---")
 
@@ -80,13 +80,15 @@ nav_titles = (
     else ["Companies Management", "Company Analysis", "Compare Companies", "Reports"]
 )
 
-# وضع القائمة الرئيسية في منتصف الشاشة باستخدام الأعمدة
+# توسيط القائمة الرئيسية والخيارات الأربعة تماماً في منتصف الصفحة
 menu_col1, menu_col2, menu_col3 = st.columns([1, 6, 1])
 with menu_col2:
+    st.markdown(f"<h3 style='text-align: center;'>{'القائمة الرئيسية' if lang_code == 'ar' else 'Main Menu'}</h3>", unsafe_allow_html=True)
     page = st.radio(
         "القائمة الرئيسية" if lang_code == "ar" else "Main Menu",
         nav_titles,
         horizontal=True,
+        label_visibility="collapsed"
     )
     st.markdown(f"<p style='text-align: center; color: gray;'>{'عدد الشركات المحفوظة' if lang_code == 'ar' else 'Saved Companies'}: {len(companies)}</p>", unsafe_allow_html=True)
 
