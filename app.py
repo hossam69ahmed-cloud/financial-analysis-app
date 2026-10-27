@@ -30,7 +30,7 @@ st.markdown(
         direction: ltr;
     }
     div.row-widget.stRadio > div {
-        flex-direction: row;
+        flex-direction: column;
         justify-content: flex-start;
         text-align: left;
     }
@@ -68,20 +68,19 @@ def show(df: pd.DataFrame, kind: str | None = None):
     st.dataframe(format_frame(df, kind))
 
 
-# ------------------------------------------------------------------ Main Menu (Aligned to Left)
+# ------------------------------------------------------------------ Sidebar Main Menu
+st.sidebar.markdown("<h3>Main Menu</h3>", unsafe_allow_html=True)
+
 nav_titles = ["Companies Management", "Company Analysis", "Compare Companies", "Reports"]
 
-st.markdown("<h3>Main Menu</h3>", unsafe_allow_html=True)
-
-page = st.radio(
+page = st.sidebar.radio(
     "Main Menu",
     nav_titles,
-    horizontal=True,
     label_visibility="collapsed"
 )
 
-st.markdown(f"<p style='color: gray;'>Saved Companies: {len(companies)}</p>", unsafe_allow_html=True)
-st.markdown("---")
+st.sidebar.markdown("---")
+st.sidebar.markdown(f"<p style='color: gray;'>Saved Companies: {len(companies)}</p>", unsafe_allow_html=True)
 
 
 # ================================================================== PAGE 1: companies
@@ -91,7 +90,7 @@ def page_companies():
 
     tab_titles = ["Excel Upload", "Manual Entry", "Saved Companies"]
     
-    tab_selection = st.radio("Sections", tab_titles, horizontal=True, label_visibility="collapsed")
+    tab_selection = st.radio("Sections", tab_titles, horizontal=True)
     st.markdown("---")
 
     if tab_selection == tab_titles[0]:
@@ -201,7 +200,7 @@ def page_analysis():
         st.markdown(f"- {t}")
 
     sub_tabs = ["Income Statement", "Balance Sheet", "Financial Ratios"]
-    sub_sel = st.radio("Sections", sub_tabs, horizontal=True, label_visibility="collapsed")
+    sub_sel = st.radio("Sections", sub_tabs, horizontal=True)
     st.markdown("---")
 
     inc, bs = income_statement(c), balance_sheet(c)
