@@ -86,9 +86,10 @@ st.sidebar.markdown(f"<p style='color: gray;'>Saved Companies: {len(companies)}<
 # ================================================================== PAGE 1: companies
 def page_companies():
     st.markdown("<h2>Companies Management</h2>", unsafe_allow_html=True)
-    st.markdown("<p>Add company data via Excel upload, manual entry, or sample data.</p>", unsafe_allow_html=True)
+    st.markdown("<p>Add company data via Excel upload, manual entry, or sample data, and manage saved companies.</p>", unsafe_allow_html=True)
 
-    tab_titles = ["Excel Upload", "Manual Entry", "Saved Companies"]
+    # أضفنا تابه جديدة باسم "Delete Company" لمسح البيانات المطلوبة بسهولة
+    tab_titles = ["Excel Upload", "Manual Entry", "Saved Companies", "Delete Company"]
     
     tab_selection = st.radio("Sections", tab_titles, horizontal=True)
     st.markdown("---")
@@ -166,7 +167,7 @@ def page_companies():
                     except Exception as e:  # noqa: BLE001
                         st.error(str(e))
 
-    else:
+    elif tab_selection == tab_titles[2]:
         if not companies:
             st.info("No companies saved yet.")
         else:
@@ -174,16 +175,24 @@ def page_companies():
                      "Years": f"{c.years[0]}–{c.years[-1]}", "Currency / Unit": c.meta_line}
                     for c in companies.values()]
             st.dataframe(pd.DataFrame(rows), hide_index=True)
-            col1, col2 = st.columns(2)
-            victim = col1.selectbox("Delete Company", list(companies))
-            if col1.button("🗑️ Delete"):
-                remove_company(victim)
-                st.rerun()
-            exp = col2.selectbox("Export Company Excel", list(companies))
-            col2.download_button(
+            exp = st.selectbox("Export Company Excel", list(companies))
+            st.download_button(
                 "⬇️ Download", data=build_workbook(companies[exp]), file_name=f"{slug(exp)}_input.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
+
+    else:
+        # تابة مسح وحذف الشركات المخصصة
+        st.subheader("Delete Company Data")
+        if not companies:
+            st.info("No companies available to delete.")
+        else:
+            target_company = st.selectbox("Select Company to Delete", list(companies))
+            st.warning(f"Are you sure you want to delete all data for «{target_company}»? This action cannot be undone.")
+            if st.button("🗑️ Confirm Delete Company", type="primary"):
+                remove_company(target_company)
+                st.success(f"Company «{target_company}» has been deleted successfully.")
+                st.rerun()
 
 
 # ================================================================== PAGE 2: analysis
@@ -247,86 +256,4 @@ def page_analysis():
         st.caption("Balance sheet ratios are calculated on year-end balances.")
 
 
-# ================================================================== PAGE 3: compare
-def page_compare():
-    st.header("Compare Companies")
-    if len(companies) < 2:
-        st.info("Please add at least two companies to make comparisons.")
-        return
-    names = st.multiselect("Select Companies", list(companies), default=list(companies)[:2])
-    if len(names) < 2:
-        st.warning("Please select at least two companies.")
-        return
-    sel = {n: companies[n] for n in names}
-    years = sorted(all_years(sel), reverse=True)
-    year = st.selectbox("Year", years)
-
-    table, best = comparison_table(sel, year)
-    rows, index = [], []
-    for grp, keys in METRIC_GROUPS.items():
-        rows.append([""] * (len(names) + 1))
-        index.append(f"— {grp} —")
-        for k in keys:
-            rows.append([fmt_value(v, kind_of(k)) for v in table.loc[k]] + [best[k]])
-            index.append(label(k))
-    st.dataframe(pd.DataFrame(rows, index=index, columns=names + ["Best"]), height=700)
-    st.caption("Amounts are in each company's currency and unit.")
-
-    st.subheader("Metric Trend Over Years")
-    metric = st.selectbox("Metric", ALL_METRICS, format_func=label)
-    trend = metric_trend(sel, metric)
-    st.line_chart(trend.rename(index=str))
-    st.dataframe(pd.DataFrame([[fmt_value(v, kind_of(metric)) for v in r] for _, r in trend.iterrows()],
-                              index=[str(y) for y in trend.index], columns=names))
-
-
-# ================================================================== PAGE 4: reports
-def page_reports():
-    st.header("Reports")
-    if not companies:
-        st.info("Please add a company first.")
-        return
-    mode = st.radio("Report Type", ["Single Company", "Company Comparison"], horizontal=True)
-    xlsx_mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-
-    if mode == "Single Company":
-        name = st.selectbox("Company", list(companies))
-        sig = ("single", name)
-        if st.button("Generate Report", type="primary"):
-            with st.spinner("Generating..."):
-                c = companies[name]
-                st.session_state.report = {"sig": sig, "xlsx": company_excel(c), "pdf": company_pdf(c),
-                                           "base": f"{slug(name)}_analysis"}
-    else:
-        names = st.multiselect("Companies", list(companies), default=list(companies)[:2])
-        sel = {n: companies[n] for n in names}
-        years = sorted(all_years(sel), reverse=True) if sel else []
-        year = st.selectbox("Comparison Year", years) if years else None
-        sig = ("compare", tuple(names), year)
-        if st.button("Generate Report", type="primary"):
-            if len(names) < 2:
-                st.warning("Please select at least two companies.")
-            else:
-                with st.spinner("Generating..."):
-                    st.session_state.report = {"sig": sig, "xlsx": comparison_excel(sel, year),
-                                               "pdf": comparison_pdf(sel, year),
-                                               "base": f"comparison_{year}"}
-
-    rep = st.session_state.get("report")
-    if rep and rep["sig"] == sig:
-        st.success("Report is ready:")
-        c1, c2 = st.columns(2)
-        c1.download_button("⬇️ Download Excel", rep["xlsx"], file_name=f"{rep['base']}.xlsx", mime=xlsx_mime)
-        c2.download_button("⬇️ Download PDF", rep["pdf"], file_name=f"{rep['base']}.pdf", mime="application/pdf")
-
-
-# Pages Routing Dictionary
-pages_dict = {
-    "Companies Management": page_companies,
-    "Company Analysis": page_analysis,
-    "Compare Companies": page_compare,
-    "Reports": page_reports,
-}
-
-if page in pages_dict:
-    pages_dict[page]()
+# ================================================================== PAGE 3:
