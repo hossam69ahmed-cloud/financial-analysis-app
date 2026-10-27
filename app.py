@@ -42,10 +42,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ------------------------------------------------------------------ Top Header: Title (Left Aligned)
-st.markdown("<h1>Financial analysis Tech-Builder</h1>", unsafe_allow_html=True)
-st.markdown("---")
-
 # ------------------------------------------------------------------ state
 if "companies" not in st.session_state:
     st.session_state.companies = storage.load_all()
@@ -69,6 +65,8 @@ def show(df: pd.DataFrame, kind: str | None = None):
 
 
 # ------------------------------------------------------------------ Sidebar Main Menu
+st.sidebar.markdown("<p style='font-size: 16px; font-weight: bold;'>Financial analysis Tech-Builder</p>", unsafe_allow_html=True)
+st.sidebar.markdown("---")
 st.sidebar.markdown("<h3>Main Menu</h3>", unsafe_allow_html=True)
 
 nav_titles = ["Companies Management", "Company Analysis", "Compare Companies", "Reports"]
@@ -88,7 +86,6 @@ def page_companies():
     st.markdown("<h2>Companies Management</h2>", unsafe_allow_html=True)
     st.markdown("<p>Add company data via Excel upload, manual entry, or sample data, and manage saved companies.</p>", unsafe_allow_html=True)
 
-    # أضفنا تابه جديدة باسم "Delete Company" لمسح البيانات المطلوبة بسهولة
     tab_titles = ["Excel Upload", "Manual Entry", "Saved Companies", "Delete Company"]
     
     tab_selection = st.radio("Sections", tab_titles, horizontal=True)
@@ -182,7 +179,6 @@ def page_companies():
             )
 
     else:
-        # تابة مسح وحذف الشركات المخصصة
         st.subheader("Delete Company Data")
         if not companies:
             st.info("No companies available to delete.")
@@ -256,4 +252,61 @@ def page_analysis():
         st.caption("Balance sheet ratios are calculated on year-end balances.")
 
 
-# ================================================================== PAGE 3:
+# ================================================================== PAGE 3: compare
+def page_compare():
+    st.header("Compare Companies")
+    if len(companies) < 2:
+        st.info("Please add at least two companies to make comparisons.")
+        return
+    names = st.multiselect("Select Companies", list(companies), default=list(companies)[:2])
+    if len(names) < 2:
+        st.warning("Please select at least two companies.")
+        return
+    sel = {n: companies[n] for n in names}
+    years = sorted(all_years(sel), reverse=True)
+    year = st.selectbox("Year", years)
+
+    table, best = comparison_table(sel, year)
+    rows, index = [], []
+    for grp, keys in METRIC_GROUPS.items():
+        rows.append([""] * (len(names) + 1))
+        index.append(f"— {grp} —")
+        for k in keys:
+            rows.append([fmt_value(v, kind_of(k)) for v in table.loc[k]] + [best[k]])
+            index.append(label(k))
+    st.dataframe(pd.DataFrame(rows, index=index, columns=names + ["Best"]), height=700)
+    st.caption("Amounts are in each company's currency and unit.")
+
+    st.subheader("Metric Trend Over Years")
+    metric = st.selectbox("Metric", ALL_METRICS, format_func=label)
+    trend = metric_trend(sel, metric)
+    st.line_chart(trend.rename(index=str))
+    st.dataframe(pd.DataFrame([[fmt_value(v, kind_of(metric)) for v in r] for _, r in trend.iterrows()],
+                              index=[str(y) for y in trend.index], columns=names))
+
+
+# ================================================================== PAGE 4: reports
+def page_reports():
+    st.header("Reports")
+    if not companies:
+        st.info("Please add a company first.")
+        return
+    mode = st.radio("Report Type", ["Single Company", "Company Comparison"], horizontal=True)
+    xlsx_mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+    if mode == "Single Company":
+        name = st.selectbox("Company", list(companies))
+        sig = ("single", name)
+        if st.button("Generate Report", type="primary"):
+            with st.spinner("Generating..."):
+                c = companies[name]
+                st.session_state.report = {"sig": sig, "xlsx": company_excel(c), "pdf": company_pdf(c),
+                                           "base": f"{slug(name)}_analysis"}
+    else:
+        names = st.multiselect("Companies", list(companies), default=list(companies)[:2])
+        sel = {n: companies[n] for n in names}
+        years = sorted(all_years(sel), reverse=True) if sel else []
+        year = st.selectbox("Comparison Year", years) if years else None
+        sig = ("compare", tuple(names), year)
+        if st.button("Generate Report", type="primary"):
+            if
