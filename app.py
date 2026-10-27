@@ -73,19 +73,18 @@ def show(df: pd.DataFrame, kind: str | None = None):
     st.dataframe(format_frame(df, kind))
 
 
-# ------------------------------------------------------------------ Top Centered Main Menu (Horizontal)
+# ------------------------------------------------------------------ Top Centered Main Menu (Stacked properly)
 nav_titles = (
     ["إدارة الشركات", "تحليل شركة", "مقارنة شركات", "التقارير"]
     if lang_code == "ar"
     else ["Companies Management", "Company Analysis", "Compare Companies", "Reports"]
 )
 
-# توسيط القائمة الرئيسية والخيارات الأربعة تماماً في منتصف الصفحة
-menu_col1, menu_col2, menu_col3 = st.columns([1, 6, 1])
+menu_col1, menu_col2, menu_col3 = st.columns([1, 4, 1])
 with menu_col2:
     st.markdown(f"<h3 style='text-align: center;'>{'القائمة الرئيسية' if lang_code == 'ar' else 'Main Menu'}</h3>", unsafe_allow_html=True)
     page = st.radio(
-        "القائمة الرئيسية" if lang_code == "ar" else "Main Menu",
+        "القائمة الرئيسية",
         nav_titles,
         horizontal=True,
         label_visibility="collapsed"
@@ -102,7 +101,7 @@ def page_companies():
 
     tab_titles = ["رفع ملف Excel", "إدخال / تعديل يدوي", "الشركات المحفوظة"] if lang_code == "ar" else ["Excel Upload", "Manual Entry", "Saved Companies"]
     
-    tab_col1, tab_col2, tab_col3 = st.columns([1, 5, 1])
+    tab_col1, tab_col2, tab_col3 = st.columns([1, 4, 1])
     with tab_col2:
         tab_selection = st.radio("الأقسام", tab_titles, horizontal=True, label_visibility="collapsed")
     st.markdown("---")
@@ -214,7 +213,7 @@ def page_analysis():
         st.markdown(f"- {t}")
 
     sub_tabs = ["قائمة الدخل", "الميزانية العمومية", "النسب المالية"] if lang_code == "ar" else ["Income Statement", "Balance Sheet", "Financial Ratios"]
-    sub_col1, sub_col2, sub_col3 = st.columns([1, 5, 1])
+    sub_col1, sub_col2, sub_col3 = st.columns([1, 4, 1])
     with sub_col2:
         sub_sel = st.radio("الأقسام", sub_tabs, horizontal=True, label_visibility="collapsed")
     st.markdown("---")
@@ -303,50 +302,4 @@ def page_reports():
         st.info("أضف شركة أولاً.")
         return
     mode = st.radio("نوع التقرير", ["شركة واحدة", "مقارنة بين شركات"], horizontal=True)
-    xlsx_mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-
-    if mode == "شركة واحدة":
-        name = st.selectbox("الشركة", list(companies))
-        sig = ("single", name)
-        if st.button("إنشاء التقرير", type="primary"):
-            with st.spinner("جاري الإنشاء..."):
-                c = companies[name]
-                st.session_state.report = {"sig": sig, "xlsx": company_excel(c), "pdf": company_pdf(c),
-                                           "base": f"{slug(name)}_analysis"}
-    else:
-        names = st.multiselect("الشركات", list(companies), default=list(companies)[:2])
-        sel = {n: companies[n] for n in names}
-        years = sorted(all_years(sel), reverse=True) if sel else []
-        year = st.selectbox("سنة المقارنة", years) if years else None
-        sig = ("compare", tuple(names), year)
-        if st.button("إنشاء التقرير", type="primary"):
-            if len(names) < 2:
-                st.warning("اختر شركتين على الأقل.")
-            else:
-                with st.spinner("جاري الإنشاء..."):
-                    st.session_state.report = {"sig": sig, "xlsx": comparison_excel(sel, year),
-                                               "pdf": comparison_pdf(sel, year),
-                                               "base": f"comparison_{year}"}
-
-    rep = st.session_state.get("report")
-    if rep and rep["sig"] == sig:
-        st.success("التقرير جاهز:")
-        c1, c2 = st.columns(2)
-        c1.download_button("⬇️ تحميل Excel", rep["xlsx"], file_name=f"{rep['base']}.xlsx", mime=xlsx_mime)
-        c2.download_button("⬇️ تحميل PDF", rep["pdf"], file_name=f"{rep['base']}.pdf", mime="application/pdf")
-
-
-# توجيه الصفحات
-pages_dict = {
-    "إدارة الشركات": page_companies,
-    "تحليل شركة": page_analysis,
-    "مقارنة شركات": page_compare,
-    "التقارير": page_reports,
-    "Companies Management": page_companies,
-    "Company Analysis": page_analysis,
-    "Compare Companies": page_compare,
-    "Reports": page_reports,
-}
-
-if page in pages_dict:
-    pages_dict[page]()
+    xlsx_mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.
