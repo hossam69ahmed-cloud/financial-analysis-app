@@ -21,15 +21,16 @@ from src.utils import fmt_value, format_frame, slug
 
 st.set_page_config(page_title="Financial analysis Tech-Builder", layout="wide")
 
-# حقن CSS قوي لتوسيط العناصر بالكامل وضبط اتجاه النصوص
+# حقن CSS لتوسيط كافة محتويات الصفحة وجعل قائمة اللغة صغيرة ومنسقة
 st.markdown(
     """
     <style>
-    /* توسيط العناوين الرئيسية */
-    h1, h2, h3 {
+    /* توسيط كافة العناوين والنصوص والعناصر الرئيسية */
+    h1, h2, h3, h4, p, label, .stMarkdown {
         text-align: center !important;
+        direction: rtl;
     }
-    /* توسيط أزرار الاختيار والقوائم */
+    /* توسيط أزرار الاختيار والقوائم الأفقية */
     div.row-widget.stRadio > div {
         flex-direction: row;
         justify-content: center;
@@ -38,40 +39,25 @@ st.markdown(
     div.row-widget.stRadio > div[role='radiogroup'] {
         justify-content: center;
     }
-    /* تحسين محاذاة الحاويات في المنتصف */
-    .center-content {
-        display: flex;
-        justify-content: center;
-        align-items: center;
+    /* تصغير صندوق اختيار اللغة وجعله أنيقاً */
+    [data-testid="stSelectbox"] {
+        max-width: 150px;
+        margin-right: auto;
+        margin-left: auto;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# ------------------------------------------------------------------ Top Header: Language & Title
-col_left, col_center, col_right = st.columns([1, 4, 1])
+# ------------------------------------------------------------------ Top Header: Small Language Selector & Centered Title
+c_l, c_t, c_r = st.columns([2, 6, 2])
 
-with col_right:
-    lang_option = st.selectbox("Language / اللغة", ["العربية", "English"])
+with c_r:
+    lang_option = st.selectbox("Language / اللغة", ["العربية", "English"], label_visibility="collapsed")
 lang_code = "ar" if lang_option == "العربية" else "en"
 
-if lang_code == "ar":
-    st.markdown(
-        """<style>
-        [data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li, label {direction: rtl; text-align: right;}
-        </style>""",
-        unsafe_allow_html=True,
-    )
-else:
-    st.markdown(
-        """<style>
-        [data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li, label {direction: ltr; text-align: left;}
-        </style>""",
-        unsafe_allow_html=True,
-    )
-
-with col_center:
+with c_t:
     st.markdown("<h1>Financial analysis Tech-Builder</h1>", unsafe_allow_html=True)
 
 st.markdown("---")
@@ -107,7 +93,6 @@ nav_titles = (
 
 st.markdown(f"<h3>{'القائمة الرئيسية' if lang_code == 'ar' else 'Main Menu'}</h3>", unsafe_allow_html=True)
 
-# استخدام أعمدة لتوسيط الـ Radio في المنتصف تماماً
 m_c1, m_c2, m_c3 = st.columns([1, 6, 1])
 with m_c2:
     page = st.radio(
@@ -123,8 +108,8 @@ st.markdown("---")
 
 # ================================================================== PAGE 1: companies
 def page_companies():
-    st.header("إدارة الشركات" if lang_code == "ar" else "Companies Management")
-    st.write("أضف بيانات الشركة بإحدى الطرق: رفع ملف Excel، أو إدخال يدوي داخل البرنامج، أو بيانات تجريبية." if lang_code == "ar" else "Add company data via Excel upload, manual entry, or sample data.")
+    st.markdown(f"<h2>{'إدارة الشركات' if lang_code == 'ar' else 'Companies Management'}</h2>", unsafe_allow_html=True)
+    st.markdown(f"<p>{'أضف بيانات الشركة بإحدى الطرق: رفع ملف Excel، أو إدخال يدوي داخل البرنامج، أو بيانات تجريبية.' if lang_code == 'ar' else 'Add company data via Excel upload, manual entry, or sample data.'}</p>", unsafe_allow_html=True)
 
     tab_titles = ["رفع ملف Excel", "إدخال / تعديل يدوي", "الشركات المحفوظة"] if lang_code == "ar" else ["Excel Upload", "Manual Entry", "Saved Companies"]
     
@@ -134,12 +119,14 @@ def page_companies():
     st.markdown("---")
 
     if tab_selection == tab_titles[0]:
-        st.download_button(
-            "⬇️ تحميل قالب Excel فارغ (بقيم توضيحية)" if lang_code == "ar" else "⬇️ Download Empty Template",
-            data=template_bytes(),
-            file_name="company_template.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
+        col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
+        with col_btn2:
+            st.download_button(
+                "⬇️ تحميل قالب Excel فارغ (بقيم توضيحية)" if lang_code == "ar" else "⬇️ Download Empty Template",
+                data=template_bytes(),
+                file_name="company_template.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
         st.caption("املأ الخلايا الزرقاء فقط. المصروفات تُدخل بأرقام موجبة. اسم الشركة من ورقة Info." if lang_code == "ar" else "Fill blue cells only.")
         files = st.file_uploader("ارفع ملف أو أكثر" if lang_code == "ar" else "Upload files", type=["xlsx", "xlsm"], accept_multiple_files=True)
         if files and st.button("استيراد الملفات" if lang_code == "ar" else "Import Files", type="primary"):
@@ -349,30 +336,4 @@ def page_reports():
             if len(names) < 2:
                 st.warning("اختر شركتين على الأقل.")
             else:
-                with st.spinner("جاري الإنشاء..."):
-                    st.session_state.report = {"sig": sig, "xlsx": comparison_excel(sel, year),
-                                               "pdf": comparison_pdf(sel, year),
-                                               "base": f"comparison_{year}"}
-
-    rep = st.session_state.get("report")
-    if rep and rep["sig"] == sig:
-        st.success("التقرير جاهز:")
-        c1, c2 = st.columns(2)
-        c1.download_button("⬇️ تحميل Excel", rep["xlsx"], file_name=f"{rep['base']}.xlsx", mime=xlsx_mime)
-        c2.download_button("⬇️ تحميل PDF", rep["pdf"], file_name=f"{rep['base']}.pdf", mime="application/pdf")
-
-
-# توجيه الصفحات الفعلي وعرض المحتوى المختار
-pages_dict = {
-    "إدارة الشركات": page_companies,
-    "تحليل شركة": page_analysis,
-    "مقارنة شركات": page_compare,
-    "التقارير": page_reports,
-    "Companies Management": page_companies,
-    "Company Analysis": page_analysis,
-    "Compare Companies": page_compare,
-    "Reports": page_reports,
-}
-
-if page in pages_dict:
-    pages_dict[page]()
+                with st.spinner("
