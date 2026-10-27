@@ -337,4 +337,4 @@ def page_compare():
             rows.append([fmt_value(v, kind_of(k)) for v in table.loc[k]] + [best[k]])
             index.append(label(k))
             
-    best_col_title = "الأفضل" if lang_code == "ar" else "Best
+    best_col_title = "الأفضل" if lang_code == "ar" else "Best"
