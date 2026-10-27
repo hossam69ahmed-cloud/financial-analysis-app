@@ -19,63 +19,35 @@ from src.schema import kind_of, label
 from src.template import build_workbook, template_bytes
 from src.utils import fmt_value, format_frame, slug
 
-st.set_page_config(page_title="المحلل المالي", page_icon="📊", layout="wide")
+st.set_page_config(page_title="المحلل المالي | Financial Analyzer", layout="wide")
 
-# ------------------------------------------------------------------ language & dynamic direction CSS
-lang_option = st.sidebar.selectbox("Language / اللغة", ["العربية", "English"])
+# ------------------------------------------------------------------ Top Header: Language & Navigation
+col_title, col_lang = st.columns([4, 1])
+
+with col_lang:
+    lang_option = st.selectbox("Language / اللغة", ["العربية", "English"])
 lang_code = "ar" if lang_option == "العربية" else "en"
 
+# اتجاه الواجهة بالكامل حسب اللغة المختارة
 if lang_code == "ar":
-    # حقن CSS لقلب الشريط الجانبي إلى اليمين وجعل الاتجاه من اليمين لليسار (RTL)
     st.markdown(
-        """
-        <style>
-        /* نقل الشريط الجانبي إلى اليمين ومعكوس المحاذاة */
-        [data-testid="stSidebar"] {
-            right: 0px;
-            left: auto;
-            direction: rtl;
-        }
-        [data-testid="stSidebar"] div, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label {
-            text-align: right;
-        }
-        /* ضبط محتوى الصفحة الرئيسي ليتلاءم مع اليمين */
-        .main {
-            direction: rtl;
-            text-align: right;
-        }
+        """<style>
         [data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li,
-        h1, h2, h3 {
-            direction: rtl;
-            text-align: right;
-        }
-        </style>
-        """,
+        h1, h2, h3, h4, h5, h6, label {direction: rtl; text-align: right;}
+        </style>""",
         unsafe_allow_html=True,
     )
 else:
-    # الوضع الطبيعي للإنجليزية (LTR والبار في اليسار)
     st.markdown(
-        """
-        <style>
-        [data-testid="stSidebar"] {
-            left: 0px;
-            right: auto;
-            direction: ltr;
-        }
-        .main {
-            direction: ltr;
-            text-align: left;
-        }
+        """<style>
         [data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li,
-        h1, h2, h3 {
-            direction: ltr;
-            text-align: left;
-        }
-        </style>
-        """,
+        h1, h2, h3, h4, h5, h6, label {direction: ltr; text-align: left;}
+        </style>""",
         unsafe_allow_html=True,
     )
+
+with col_title:
+    st.title("📊 المحلل المالي" if lang_code == "ar" else "📊 Financial Analyzer")
 
 # ------------------------------------------------------------------ state
 if "companies" not in st.session_state:
@@ -99,17 +71,20 @@ def show(df: pd.DataFrame, kind: str | None = None):
     st.dataframe(format_frame(df, kind))
 
 
-# ------------------------------------------------------------------ sidebar menu
-st.sidebar.title("📊 المحلل المالي" if lang_code == "ar" else "📊 Financial Analyzer")
-
+# ------------------------------------------------------------------ Top Main Menu (Horizontal)
 nav_titles = (
     ["إدارة الشركات", "تحليل شركة", "مقارنة شركات", "التقارير"]
     if lang_code == "ar"
     else ["Companies Management", "Company Analysis", "Compare Companies", "Reports"]
 )
 
-page = st.sidebar.radio("القائمة" if lang_code == "ar" else "Menu", nav_titles)
-st.sidebar.caption(f"{'عدد الشركات المحفوظة' if lang_code == 'ar' else 'Saved Companies'}: {len(companies)}")
+page = st.radio(
+    "القائمة الرئيسية" if lang_code == "ar" else "Main Menu",
+    nav_titles,
+    horizontal=True,
+)
+st.caption(f"{'عدد الشركات المحفوظة' if lang_code == 'ar' else 'Saved Companies'}: {len(companies)}")
+st.markdown("---")
 
 
 # ================================================================== PAGE 1: companies
@@ -117,9 +92,11 @@ def page_companies():
     st.header("إدارة الشركات" if lang_code == "ar" else "Companies Management")
     st.write("أضف بيانات الشركة بإحدى الطرق: رفع ملف Excel، أو إدخال يدوي داخل البرنامج، أو بيانات تجريبية." if lang_code == "ar" else "Add company data via Excel upload, manual entry, or sample data.")
 
-    tab_up, tab_manual, tab_list = st.tabs(["رفع ملف Excel", "إدخال / تعديل يدوي", "الشركات المحفوظة"] if lang_code == "ar" else ["Excel Upload", "Manual Entry", "Saved Companies"])
+    tab_titles = ["رفع ملف Excel", "إدخال / تعديل يدوي", "الشركات المحفوظة"] if lang_code == "ar" else ["Excel Upload", "Manual Entry", "Saved Companies"]
+    tab_selection = st.radio("الأقسام", tab_titles, horizontal=True, label_visibility="collapsed")
+    st.markdown("---")
 
-    with tab_up:
+    if tab_selection == tab_titles[0]:
         st.download_button(
             "⬇️ تحميل قالب Excel فارغ (بقيم توضيحية)" if lang_code == "ar" else "⬇️ Download Empty Template",
             data=template_bytes(),
@@ -144,7 +121,7 @@ def page_companies():
                 add_company(c)
             st.success("تمت إضافة Nile Foods و Delta Tech.")
 
-    with tab_manual:
+    elif tab_selection == tab_titles[1]:
         existing = ["— شركة جديدة —" if lang_code == "ar" else "— New Company —"] + list(companies)
         pick = st.selectbox("ابدأ من" if lang_code == "ar" else "Start from", existing)
         with st.form("meta_form"):
@@ -192,7 +169,7 @@ def page_companies():
                     except Exception as e:  # noqa: BLE001
                         st.error(str(e))
 
-    with tab_list:
+    else:
         if not companies:
             st.info("لا توجد شركات بعد.")
         else:
@@ -225,10 +202,13 @@ def page_analysis():
     for t in key_takeaways(c):
         st.markdown(f"- {t}")
 
-    t_inc, t_bal, t_rat = st.tabs(["قائمة الدخل", "الميزانية العمومية", "النسب المالية"])
+    sub_tabs = ["قائمة الدخل", "الميزانية العمومية", "النسب المالية"] if lang_code == "ar" else ["Income Statement", "Balance Sheet", "Financial Ratios"]
+    sub_sel = st.radio("الأقسام", sub_tabs, horizontal=True, label_visibility="collapsed")
+    st.markdown("---")
+
     inc, bs = income_statement(c), balance_sheet(c)
 
-    with t_inc:
+    if sub_sel == sub_tabs[0]:
         st.subheader("قائمة الدخل")
         show(inc)
         chart = pd.DataFrame({"Revenue": inc.loc["revenue"], "Net Income": inc.loc["net_income"]}).rename(index=str)
@@ -244,7 +224,7 @@ def page_analysis():
         st.line_chart((m.loc[["gross_margin", "operating_margin", "net_margin"]] * 100)
                       .rename(index=label).T.rename(index=str))
 
-    with t_bal:
+    elif sub_sel == sub_tabs[1]:
         st.subheader("الميزانية العمومية")
         show(bs)
         diff = balance_check(c)
@@ -259,7 +239,7 @@ def page_analysis():
         st.subheader("هيكل التمويل ورأس المال العامل")
         show(structure_metrics(c))
 
-    with t_rat:
+    else:
         ratios = compute_ratios(c)
         for grp in GROUP_ORDER:
             st.subheader(grp)
