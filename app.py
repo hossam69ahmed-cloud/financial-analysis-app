@@ -21,7 +21,7 @@ from src.utils import fmt_value, format_frame, slug
 
 st.set_page_config(page_title="Financial analysis Tech-Builder", layout="wide")
 
-# ------------------------------------------------------------------ Top Header: Language & Title (Centered, No Icon)
+# ------------------------------------------------------------------ Top Header: Language & Title
 col_left, col_center, col_right = st.columns([1, 4, 1])
 
 with col_right:
@@ -73,7 +73,7 @@ def show(df: pd.DataFrame, kind: str | None = None):
     st.dataframe(format_frame(df, kind))
 
 
-# ------------------------------------------------------------------ Top Centered Main Menu (Stacked properly)
+# ------------------------------------------------------------------ Top Centered Main Menu & Options Stacked
 nav_titles = (
     ["إدارة الشركات", "تحليل شركة", "مقارنة شركات", "التقارير"]
     if lang_code == "ar"
@@ -237,25 +237,4 @@ def page_analysis():
                       .rename(index=label).T.rename(index=str))
 
     elif sub_sel == sub_tabs[1]:
-        st.subheader("الميزانية العمومية")
-        show(bs)
-        diff = balance_check(c)
-        if (diff.abs() > 0.5).any():
-            st.warning("الميزانية غير متوازنة في: " + ", ".join(map(str, diff[diff.abs() > 0.5].index)))
-        else:
-            st.success("الميزانية متوازنة في كل السنوات ✔")
-        st.subheader("التحليل الرأسي (% من إجمالي الأصول)")
-        show(vertical_analysis(bs, "total_assets"), "pct")
-        st.subheader("التحليل الأفقي (النمو السنوي)")
-        show(growth(bs).assign(CAGR=cagr(bs)), "pct")
-        st.subheader("هيكل التمويل ورأس المال العامل")
-        show(structure_metrics(c))
-
-    else:
-        ratios = compute_ratios(c)
-        for grp in GROUP_ORDER:
-            st.subheader(grp)
-            keys = [k for k, v in RATIO_META.items() if v[0] == grp]
-            rows = [[fmt_value(v, RATIO_META[k][2]) for v in ratios.loc[k]] for k in keys]
-            st.dataframe(pd.DataFrame(rows, index=[RATIO_META[k][1] for k in keys],
-                                      columns=[str(y) for y in ratios
+        st.subheader
