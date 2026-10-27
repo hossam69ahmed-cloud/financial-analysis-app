@@ -21,14 +21,61 @@ from src.utils import fmt_value, format_frame, slug
 
 st.set_page_config(page_title="المحلل المالي", page_icon="📊", layout="wide")
 
-# Right-to-left only for the Arabic text blocks
-st.markdown(
-    """<style>
-    [data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li,
-    h1, h2, h3 {direction: rtl; text-align: right;}
-    </style>""",
-    unsafe_allow_html=True,
-)
+# ------------------------------------------------------------------ language & dynamic direction CSS
+lang_option = st.sidebar.selectbox("Language / اللغة", ["العربية", "English"])
+lang_code = "ar" if lang_option == "العربية" else "en"
+
+if lang_code == "ar":
+    # حقن CSS لقلب الشريط الجانبي إلى اليمين وجعل الاتجاه من اليمين لليسار (RTL)
+    st.markdown(
+        """
+        <style>
+        /* نقل الشريط الجانبي إلى اليمين ومعكوس المحاذاة */
+        [data-testid="stSidebar"] {
+            right: 0px;
+            left: auto;
+            direction: rtl;
+        }
+        [data-testid="stSidebar"] div, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label {
+            text-align: right;
+        }
+        /* ضبط محتوى الصفحة الرئيسي ليتلاءم مع اليمين */
+        .main {
+            direction: rtl;
+            text-align: right;
+        }
+        [data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li,
+        h1, h2, h3 {
+            direction: rtl;
+            text-align: right;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+else:
+    # الوضع الطبيعي للإنجليزية (LTR والبار في اليسار)
+    st.markdown(
+        """
+        <style>
+        [data-testid="stSidebar"] {
+            left: 0px;
+            right: auto;
+            direction: ltr;
+        }
+        .main {
+            direction: ltr;
+            text-align: left;
+        }
+        [data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li,
+        h1, h2, h3 {
+            direction: ltr;
+            text-align: left;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 # ------------------------------------------------------------------ state
 if "companies" not in st.session_state:
@@ -52,10 +99,7 @@ def show(df: pd.DataFrame, kind: str | None = None):
     st.dataframe(format_frame(df, kind))
 
 
-# ------------------------------------------------------------------ sidebar
-lang_option = st.sidebar.selectbox("Language / اللغة", ["العربية", "English"])
-lang_code = "ar" if lang_option == "العربية" else "en"
-
+# ------------------------------------------------------------------ sidebar menu
 st.sidebar.title("📊 المحلل المالي" if lang_code == "ar" else "📊 Financial Analyzer")
 
 nav_titles = (
@@ -75,7 +119,6 @@ def page_companies():
 
     tab_up, tab_manual, tab_list = st.tabs(["رفع ملف Excel", "إدخال / تعديل يدوي", "الشركات المحفوظة"] if lang_code == "ar" else ["Excel Upload", "Manual Entry", "Saved Companies"])
 
-    # ---- upload
     with tab_up:
         st.download_button(
             "⬇️ تحميل قالب Excel فارغ (بقيم توضيحية)" if lang_code == "ar" else "⬇️ Download Empty Template",
@@ -101,7 +144,6 @@ def page_companies():
                 add_company(c)
             st.success("تمت إضافة Nile Foods و Delta Tech.")
 
-    # ---- manual entry
     with tab_manual:
         existing = ["— شركة جديدة —" if lang_code == "ar" else "— New Company —"] + list(companies)
         pick = st.selectbox("ابدأ من" if lang_code == "ar" else "Start from", existing)
@@ -150,7 +192,6 @@ def page_companies():
                     except Exception as e:  # noqa: BLE001
                         st.error(str(e))
 
-    # ---- list
     with tab_list:
         if not companies:
             st.info("لا توجد شركات بعد.")
@@ -302,7 +343,7 @@ def page_reports():
         c2.download_button("⬇️ تحميل PDF", rep["pdf"], file_name=f"{rep['base']}.pdf", mime="application/pdf")
 
 
-# توجيه الصفحات بناءً على اختيار القائمة
+# توجيه الصفحات
 pages_dict = {
     "إدارة الشركات": page_companies,
     "تحليل شركة": page_analysis,
