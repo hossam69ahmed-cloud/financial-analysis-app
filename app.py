@@ -18,10 +18,11 @@ from src.samples import sample_companies
 from src.schema import kind_of, label
 from src.template import build_workbook, template_bytes
 from src.utils import fmt_value, format_frame, slug
+from src.translations import TRANSLATIONS, translate_takeaway
 
 st.set_page_config(page_title="Financial analysis Tech-Builder", layout="wide")
 
-# حقن CSS لتوسيط كافة محتويات الصفحة وصندوق اللغة الصغير
+# CSS لتوسيط محتويات الصفحة وتصغير صندوق اللغة
 st.markdown(
     """
     <style>
@@ -47,19 +48,17 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ------------------------------------------------------------------ Top Header: Small Language Selector & Centered Title
 c_l, c_t, c_r = st.columns([2, 6, 2])
-
 with c_r:
     lang_option = st.selectbox("Language / اللغة", ["العربية", "English"], label_visibility="collapsed")
 lang_code = "ar" if lang_option == "العربية" else "en"
+t = TRANSLATIONS[lang_code]
 
 with c_t:
     st.markdown("<h1>Financial analysis Tech-Builder</h1>", unsafe_allow_html=True)
 
 st.markdown("---")
 
-# ------------------------------------------------------------------ state
 if "companies" not in st.session_state:
     st.session_state.companies = storage.load_all()
 if "editor_seed" not in st.session_state:
@@ -81,35 +80,28 @@ def show(df: pd.DataFrame, kind: str | None = None):
     st.dataframe(format_frame(df, kind))
 
 
-# ------------------------------------------------------------------ Top Centered Main Menu
-nav_titles = (
-    ["إدارة الشركات", "تحليل شركة", "مقارنة شركات", "التقارير"]
-    if lang_code == "ar"
-    else ["Companies Management", "Company Analysis", "Compare Companies", "Reports"]
-)
-
-st.markdown(f"<h3>{'القائمة الرئيسية' if lang_code == 'ar' else 'Main Menu'}</h3>", unsafe_allow_html=True)
+# القائمة الرئيسية
+st.markdown(f"<h3>{t['main_menu']}</h3>", unsafe_allow_html=True)
 
 m_c1, m_c2, m_c3 = st.columns([1, 6, 1])
 with m_c2:
     page = st.radio(
         "Main Menu",
-        nav_titles,
+        t["menu_items"],
         horizontal=True,
         label_visibility="collapsed"
     )
 
-st.markdown(f"<p style='text-align: center; color: gray;'>{'عدد الشركات المحفوظة' if lang_code == 'ar' else 'Saved Companies'}: {len(companies)}</p>", unsafe_allow_html=True)
+st.markdown(f"<p style='text-align: center; color: gray;'>{t['saved_companies']}: {len(companies)}</p>", unsafe_allow_html=True)
 st.markdown("---")
 
 
 # ================================================================== PAGE 1: companies
 def page_companies():
-    st.markdown(f"<h2>{'إدارة الشركات' if lang_code == 'ar' else 'Companies Management'}</h2>", unsafe_allow_html=True)
-    st.markdown(f"<p>{'أضف بيانات الشركة بإحدى الطرق: رفع ملف Excel، أو إدخال يدوي داخل البرنامج، أو بيانات تجريبية.' if lang_code == 'ar' else 'Add company data via Excel upload, manual entry, or sample data.'}</p>", unsafe_allow_html=True)
+    st.markdown(f"<h2>{t['companies_mgmt']}</h2>", unsafe_allow_html=True)
+    st.markdown(f"<p>{t['companies_desc']}</p>", unsafe_allow_html=True)
 
-    tab_titles = ["رفع ملف Excel", "إدخال / تعديل يدوي", "الشركات المحفوظة"] if lang_code == "ar" else ["Excel Upload", "Manual Entry", "Saved Companies"]
-    
+    tab_titles = t["tabs_companies"]
     t_c1, t_c2, t_c3 = st.columns([1, 6, 1])
     with t_c2:
         tab_selection = st.radio("Sections", tab_titles, horizontal=True, label_visibility="collapsed")
@@ -130,7 +122,7 @@ def page_companies():
             for f in files:
                 try:
                     c, warns = load_company_excel(f, filename=f.name)
-                except Exception as e:  # noqa: BLE001
+                except Exception as e:
                     st.error(f"{f.name}: {e}")
                     continue
                 add_company(c)
@@ -187,7 +179,7 @@ def page_companies():
                         bad = balance_check(c).abs()
                         if (bad > 0.5).any():
                             st.warning("الميزانية غير متوازنة في السنوات: " + ", ".join(map(str, bad[bad > 0.5].index)))
-                    except Exception as e:  # noqa: BLE001
+                    except Exception as e:
                         st.error(str(e))
 
     else:
@@ -212,47 +204,47 @@ def page_companies():
 
 # ================================================================== PAGE 2: analysis
 def page_analysis():
-    st.header("تحليل شركة" if lang_code == "ar" else "Company Analysis")
+    st.header(t["company_analysis"])
     if not companies:
-        st.info("أضف شركة أولاً من صفحة «إدارة الشركات».")
+        st.info("أضف شركة أولاً من صفحة «إدارة الشركات»." if lang_code == "ar" else "Add a company first.")
         return
-    name = st.selectbox("الشركة", list(companies))
+    name = st.selectbox("الشركة" if lang_code == "ar" else "Company", list(companies))
     c = companies[name]
     st.caption(f"{c.meta_line} | {c.years[0]}–{c.years[-1]}" + (f" | {c.sector}" if c.sector else ""))
 
-    for t in key_takeaways(c):
-        st.markdown(f"- {t}")
+    for takeaway in key_takeaways(c):
+        st.markdown(f"- {translate_takeaway(takeaway, lang_code)}")
 
-    sub_tabs = ["قائمة الدخل", "الميزانية العمومية", "النسب المالية"] if lang_code == "ar" else ["Income Statement", "Balance Sheet", "Financial Ratios"]
+    sub_tabs = t["sub_tabs_analysis"]
     sub_col1, sub_col2, sub_col3 = st.columns([1, 5, 1])
     with sub_col2:
-        sub_sel = st.radio("الأقسام", sub_tabs, horizontal=True, label_visibility="collapsed")
+        sub_sel = st.radio("Sections", sub_tabs, horizontal=True, label_visibility="collapsed")
     st.markdown("---")
 
     inc, bs = income_statement(c), balance_sheet(c)
 
     if sub_sel == sub_tabs[0]:
-        st.subheader("قائمة الدخل")
+        st.subheader("قائمة الدخل" if lang_code == "ar" else "Income Statement")
         show(inc)
         chart = pd.DataFrame({"Revenue": inc.loc["revenue"], "Net Income": inc.loc["net_income"]}).rename(index=str)
         st.bar_chart(chart)
-        st.subheader("التحليل الرأسي (% من الإيرادات)")
+        st.subheader("التحليل الرأسي (% من الإيرادات)" if lang_code == "ar" else "Vertical Analysis")
         show(vertical_analysis(inc), "pct")
-        st.subheader("التحليل الأفقي (النمو السنوي) و CAGR")
+        st.subheader("التحليل الأفقي (النمو السنوي) و CAGR" if lang_code == "ar" else "Horizontal Analysis & CAGR")
         g = growth(inc).assign(CAGR=cagr(inc))
         show(g, "pct")
-        st.subheader("هوامش الربح")
+        st.subheader("هوامش الربح" if lang_code == "ar" else "Profit Margins")
         m = margins(c)
         show(m, "pct")
         st.line_chart((m.loc[["gross_margin", "operating_margin", "net_margin"]] * 100)
                       .rename(index=label).T.rename(index=str))
 
     elif sub_sel == sub_tabs[1]:
-        st.subheader("الميزانية العمومية")
+        st.subheader("الميزانية العمومية" if lang_code == "ar" else "Balance Sheet")
         show(bs)
         diff = balance_check(c)
         if (diff.abs() > 0.5).any():
-            st.warning("الميزانية غير متوازنة في: " + ", ".join(map(str, diff[diff.abs() > 0.5].index)))
+            st.warning("الميزانية غير متوازنة في السنوات: " + ", ".join(map(str, diff[diff.abs() > 0.5].index)))
         else:
             st.success("الميزانية متوازنة في كل السنوات ✔")
         st.subheader("التحليل الرأسي (% من إجمالي الأصول)")
@@ -275,17 +267,17 @@ def page_analysis():
 
 # ================================================================== PAGE 3: compare
 def page_compare():
-    st.header("مقارنة شركات" if lang_code == "ar" else "Compare Companies")
+    st.header(t["compare_companies"])
     if len(companies) < 2:
         st.info("أضف شركتين على الأقل لإجراء المقارنة.")
         return
-    names = st.multiselect("اختر الشركات", list(companies), default=list(companies)[:2])
+    names = st.multiselect("اختر الشركات" if lang_code == "ar" else "Select Companies", list(companies), default=list(companies)[:2])
     if len(names) < 2:
         st.warning("اختر شركتين على الأقل.")
         return
     sel = {n: companies[n] for n in names}
     years = sorted(all_years(sel), reverse=True)
-    year = st.selectbox("السنة", years)
+    year = st.selectbox("السنة" if lang_code == "ar" else "Year", years)
 
     table, best = comparison_table(sel, year)
     rows, index = [], []
@@ -295,7 +287,7 @@ def page_compare():
         for k in keys:
             rows.append([fmt_value(v, kind_of(k)) for v in table.loc[k]] + [best[k]])
             index.append(label(k))
-    st.dataframe(pd.DataFrame(rows, index=index, columns=names + ["الأفضل"]), height=700)
+    st.dataframe(pd.DataFrame(rows, index=index, columns=names + ["الأفضل" if lang_code == "ar" else "Best"]), height=700)
     st.caption("المبالغ بعملة ووحدة كل شركة.")
 
     st.subheader("تطور مؤشر عبر السنوات")
@@ -308,18 +300,18 @@ def page_compare():
 
 # ================================================================== PAGE 4: reports
 def page_reports():
-    st.header("التقارير" if lang_code == "ar" else "Reports")
+    st.header(t["reports"])
     if not companies:
         st.info("أضف شركة أولاً.")
         return
-    mode = st.radio("نوع التقرير", ["شركة واحدة", "مقارنة بين شركات"], horizontal=True)
+    mode = st.radio("نوع التقرير" if lang_code == "ar" else "Report Type", ["شركة واحدة", "مقارنة بين شركات"] if lang_code == "ar" else ["Single Company", "Company Comparison"], horizontal=True)
     xlsx_mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
-    if mode == "شركة واحدة":
+    if mode in ["شركة واحدة", "Single Company"]:
         name = st.selectbox("الشركة", list(companies))
         sig = ("single", name)
-        if st.button("إنشاء التقرير", type="primary"):
-            with st.spinner("جاري الإنشاء..."):
+        if st.button("إنشاء التقرير" if lang_code == "ar" else "Generate Report", type="primary"):
+            with st.spinner("جاري الإنشاء..." if lang_code == "ar" else "Generating..."):
                 c = companies[name]
                 st.session_state.report = {"sig": sig, "xlsx": company_excel(c), "pdf": company_pdf(c),
                                            "base": f"{slug(name)}_analysis"}
@@ -329,33 +321,29 @@ def page_reports():
         years = sorted(all_years(sel), reverse=True) if sel else []
         year = st.selectbox("سنة المقارنة", years) if years else None
         sig = ("compare", tuple(names), year)
-        if st.button("إنشاء التقرير", type="primary"):
+        if st.button("إنشاء التقرير" if lang_code == "ar" else "Generate Report", type="primary"):
             if len(names) < 2:
                 st.warning("اختر شركتين على الأقل.")
             else:
-                with st.spinner("جاري الإنشاء..."):
+                with st.spinner("جاري الإنشاء..." if lang_code == "ar" else "Generating..."):
                     st.session_state.report = {"sig": sig, "xlsx": comparison_excel(sel, year),
                                                "pdf": comparison_pdf(sel, year),
                                                "base": f"comparison_{year}"}
 
     rep = st.session_state.get("report")
     if rep and rep["sig"] == sig:
-        st.success("التقرير جاهز:")
+        st.success("التقرير جاهز:" if lang_code == "ar" else "Report is ready:")
         c1, c2 = st.columns(2)
         c1.download_button("⬇️ تحميل Excel", rep["xlsx"], file_name=f"{rep['base']}.xlsx", mime=xlsx_mime)
         c2.download_button("⬇️ تحميل PDF", rep["pdf"], file_name=f"{rep['base']}.pdf", mime="application/pdf")
 
 
-# توجيه الصفحات
+# خريطة توجيه الصفحات
 pages_dict = {
-    "إدارة الشركات": page_companies,
-    "تحليل شركة": page_analysis,
-    "مقارنة شركات": page_compare,
-    "التقارير": page_reports,
-    "Companies Management": page_companies,
-    "Company Analysis": page_analysis,
-    "Compare Companies": page_compare,
-    "Reports": page_reports,
+    t["menu_items"][0]: page_companies,
+    t["menu_items"][1]: page_analysis,
+    t["menu_items"][2]: page_compare,
+    t["menu_items"][3]: page_reports,
 }
 
 if page in pages_dict:
