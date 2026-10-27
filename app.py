@@ -21,16 +21,14 @@ from src.utils import fmt_value, format_frame, slug
 
 st.set_page_config(page_title="Financial analysis Tech-Builder", layout="wide")
 
-# حقن CSS لتوسيط كافة محتويات الصفحة وجعل قائمة اللغة صغيرة ومنسقة
+# حقن CSS لتوسيط كافة محتويات الصفحة وصندوق اللغة الصغير
 st.markdown(
     """
     <style>
-    /* توسيط كافة العناوين والنصوص والعناصر الرئيسية */
     h1, h2, h3, h4, p, label, .stMarkdown {
         text-align: center !important;
         direction: rtl;
     }
-    /* توسيط أزرار الاختيار والقوائم الأفقية */
     div.row-widget.stRadio > div {
         flex-direction: row;
         justify-content: center;
@@ -39,7 +37,6 @@ st.markdown(
     div.row-widget.stRadio > div[role='radiogroup'] {
         justify-content: center;
     }
-    /* تصغير صندوق اختيار اللغة وجعله أنيقاً */
     [data-testid="stSelectbox"] {
         max-width: 150px;
         margin-right: auto;
@@ -321,19 +318,4 @@ def page_reports():
     if mode == "شركة واحدة":
         name = st.selectbox("الشركة", list(companies))
         sig = ("single", name)
-        if st.button("إنشاء التقرير", type="primary"):
-            with st.spinner("جاري الإنشاء..."):
-                c = companies[name]
-                st.session_state.report = {"sig": sig, "xlsx": company_excel(c), "pdf": company_pdf(c),
-                                           "base": f"{slug(name)}_analysis"}
-    else:
-        names = st.multiselect("الشركات", list(companies), default=list(companies)[:2])
-        sel = {n: companies[n] for n in names}
-        years = sorted(all_years(sel), reverse=True) if sel else []
-        year = st.selectbox("سنة المقارنة", years) if years else None
-        sig = ("compare", tuple(names), year)
-        if st.button("إنشاء التقرير", type="primary"):
-            if len(names) < 2:
-                st.warning("اختر شركتين على الأقل.")
-            else:
-               with st.spinner("جاري الإنشاء..."):
+        if st.button("إنشاء التقرير
