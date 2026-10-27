@@ -318,4 +318,45 @@ def page_reports():
     if mode == "شركة واحدة":
         name = st.selectbox("الشركة", list(companies))
         sig = ("single", name)
-        if st.button("إنشاء التقرير
+        if st.button("إنشاء التقرير", type="primary"):
+            with st.spinner("جاري الإنشاء..."):
+                c = companies[name]
+                st.session_state.report = {"sig": sig, "xlsx": company_excel(c), "pdf": company_pdf(c),
+                                           "base": f"{slug(name)}_analysis"}
+    else:
+        names = st.multiselect("الشركات", list(companies), default=list(companies)[:2])
+        sel = {n: companies[n] for n in names}
+        years = sorted(all_years(sel), reverse=True) if sel else []
+        year = st.selectbox("سنة المقارنة", years) if years else None
+        sig = ("compare", tuple(names), year)
+        if st.button("إنشاء التقرير", type="primary"):
+            if len(names) < 2:
+                st.warning("اختر شركتين على الأقل.")
+            else:
+                with st.spinner("جاري الإنشاء..."):
+                    st.session_state.report = {"sig": sig, "xlsx": comparison_excel(sel, year),
+                                               "pdf": comparison_pdf(sel, year),
+                                               "base": f"comparison_{year}"}
+
+    rep = st.session_state.get("report")
+    if rep and rep["sig"] == sig:
+        st.success("التقرير جاهز:")
+        c1, c2 = st.columns(2)
+        c1.download_button("⬇️ تحميل Excel", rep["xlsx"], file_name=f"{rep['base']}.xlsx", mime=xlsx_mime)
+        c2.download_button("⬇️ تحميل PDF", rep["pdf"], file_name=f"{rep['base']}.pdf", mime="application/pdf")
+
+
+# توجيه الصفحات
+pages_dict = {
+    "إدارة الشركات": page_companies,
+    "تحليل شركة": page_analysis,
+    "مقارنة شركات": page_compare,
+    "التقارير": page_reports,
+    "Companies Management": page_companies,
+    "Company Analysis": page_analysis,
+    "Compare Companies": page_compare,
+    "Reports": page_reports,
+}
+
+if page in pages_dict:
+    pages_dict[page]()
