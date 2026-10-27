@@ -258,48 +258,4 @@ def page_analysis():
             keys = [k for k, v in RATIO_META.items() if v[0] == grp]
             rows = [[fmt_value(v, RATIO_META[k][2]) for v in ratios.loc[k]] for k in keys]
             st.dataframe(pd.DataFrame(rows, index=[RATIO_META[k][1] for k in keys],
-                                      columns=[str(y) for y in ratios.columns]))
-        st.caption("نسب الميزانية محسوبة على أرصدة نهاية السنة.")
-
-
-# ================================================================== PAGE 3: compare
-def page_compare():
-    st.header("مقارنة شركات" if lang_code == "ar" else "Compare Companies")
-    if len(companies) < 2:
-        st.info("أضف شركتين على الأقل لإجراء المقارنة.")
-        return
-    names = st.multiselect("اختر الشركات", list(companies), default=list(companies)[:2])
-    if len(names) < 2:
-        st.warning("اختر شركتين على الأقل.")
-        return
-    sel = {n: companies[n] for n in names}
-    years = sorted(all_years(sel), reverse=True)
-    year = st.selectbox("السنة", years)
-
-    table, best = comparison_table(sel, year)
-    rows, index = [], []
-    for grp, keys in METRIC_GROUPS.items():
-        rows.append([""] * (len(names) + 1))
-        index.append(f"— {grp} —")
-        for k in keys:
-            rows.append([fmt_value(v, kind_of(k)) for v in table.loc[k]] + [best[k]])
-            index.append(label(k))
-    st.dataframe(pd.DataFrame(rows, index=index, columns=names + ["الأفضل"]), height=700)
-    st.caption("المبالغ بعملة ووحدة كل شركة.")
-
-    st.subheader("تطور مؤشر عبر السنوات")
-    metric = st.selectbox("المؤشر", ALL_METRICS, format_func=label)
-    trend = metric_trend(sel, metric)
-    st.line_chart(trend.rename(index=str))
-    st.dataframe(pd.DataFrame([[fmt_value(v, kind_of(metric)) for v in r] for _, r in trend.iterrows()],
-                              index=[str(y) for y in trend.index], columns=names))
-
-
-# ================================================================== PAGE 4: reports
-def page_reports():
-    st.header("التقارير" if lang_code == "ar" else "Reports")
-    if not companies:
-        st.info("أضف شركة أولاً.")
-        return
-    mode = st.radio("نوع التقرير", ["شركة واحدة", "مقارنة بين شركات"], horizontal=True)
-    xlsx_mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.
+                                      columns=[str(y) for y in ratios
