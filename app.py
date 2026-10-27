@@ -22,17 +22,25 @@ from src.utils import fmt_value, format_frame, slug
 st.set_page_config(page_title="المحلل المالي | Financial Analyzer", layout="wide")
 
 # ------------------------------------------------------------------ sidebar & lang
-# اختيار اللغة في الشريط الجانبي
 lang_option = st.sidebar.selectbox("Language / اللغة", ["العربية", "English"])
 lang_code = "ar" if lang_option == "العربية" else "en"
 
-# تعديل اتجاه التابات والمحتوى (RTL للعربي و LTR للإنجليزي)
+# ضبط اتجاه الصفحة بالكامل والتابات لتكون أفقية بجانب بعضها وتتبع اتجاه اللغة
 if lang_code == "ar":
     st.markdown(
         """<style>
         [data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li,
-        h1, h2, h3, h4, h5, h6, label, .stTabs [data-baseweb="tab"] {direction: rtl; text-align: right;}
-        .stTabs [data-baseweb="tab-list"] {direction: rtl;}
+        h1, h2, h3, h4, h5, h6, label {direction: rtl; text-align: right;}
+        /* جعل التابات أفقية وتدعم الاتجاه العربي */
+        .stTabs [data-baseweb="tab-list"] {
+            display: flex;
+            flex-direction: row-reverse;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .stTabs [data-baseweb="tab"] {
+            direction: rtl;
+        }
         </style>""",
         unsafe_allow_html=True,
     )
@@ -40,8 +48,17 @@ else:
     st.markdown(
         """<style>
         [data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li,
-        h1, h2, h3, h4, h5, h6, label, .stTabs [data-baseweb="tab"] {direction: ltr; text-align: left;}
-        .stTabs [data-baseweb="tab-list"] {direction: ltr;}
+        h1, h2, h3, h4, h5, h6, label {direction: ltr; text-align: left;}
+        /* جعل التابات أفقية بالاتجاه الإنجليزي */
+        .stTabs [data-baseweb="tab-list"] {
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-start;
+            gap: 10px;
+        }
+        .stTabs [data-baseweb="tab"] {
+            direction: ltr;
+        }
         </style>""",
         unsafe_allow_html=True,
     )
@@ -357,7 +374,10 @@ def page_reports():
             spin_txt = "جاري الإنشاء..." if lang_code == "ar" else "Generating..."
             with st.spinner(spin_txt):
                 c = companies[name]
-                st.session_state.report = {"sig": sig, "xlsx": company_excel(c), "pdf": company_pdf(c),
+                # إذا كانت اللغة عربية، يتم استدعاء دوال التقرير الخاصة باللغة العربية إذا وجدت أو دمجها
+                xl_data = company_excel(c, lang="ar") if "lang" in company_excel.__code__.co_varnames else company_excel(c)
+                pdf_data = company_pdf(c, lang="ar") if "lang" in company_pdf.__code__.co_varnames else company_pdf(c)
+                st.session_state.report = {"sig": sig, "xlsx": xl_data, "pdf": pdf_data,
                                            "base": f"{slug(name)}_analysis"}
     else:
         lbl_cs = "الشركات" if lang_code == "ar" else "Companies"
@@ -374,8 +394,10 @@ def page_reports():
             else:
                 spin_txt = "جاري الإنشاء..." if lang_code == "ar" else "Generating..."
                 with st.spinner(spin_txt):
-                    st.session_state.report = {"sig": sig, "xlsx": comparison_excel(sel, year),
-                                               "pdf": comparison_pdf(sel, year),
+                    xl_comp = comparison_excel(sel, year, lang="ar") if "lang" in comparison_excel.__code__.co_varnames else comparison_excel(sel, year)
+                    pdf_comp = comparison_pdf(sel, year, lang="ar") if "lang" in comparison_pdf.__code__.co_varnames else comparison_pdf(sel, year)
+                    st.session_state.report = {"sig": sig, "xlsx": xl_comp,
+                                               "pdf": pdf_comp,
                                                "base": f"comparison_{year}"}
 
     rep = st.session_state.get("report")
@@ -388,7 +410,7 @@ def page_reports():
         c2.download_button(dl_pdf, rep["pdf"], file_name=f"{rep['base']}.pdf", mime="application/pdf")
 
 
-# Map pages execution according to language option
+# خريطة الصفحات بناءً على لغة البرنامج
 if lang_code == "ar":
     page_map = {
         "إدارة الشركات": page_companies,
