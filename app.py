@@ -37,15 +37,17 @@ st.markdown(
     div.row-widget.stRadio > div[role='radiogroup'] {
         justify-content: flex-start;
     }
-    /* إخفاء شريط أدوات Streamlit العلوي وزر Manage app بالكامل من الأسفل */
+    /* إخفاء زر Manage app وشريط الأدوات العلوي والسفلي بالكامل */
     #MainMenu {visibility: hidden;}
     header {visibility: hidden;}
     footer {visibility: hidden;}
     [data-testid="stStatusWidget"] {visibility: hidden;}
-    .stDeployButton {display:none;}
-    div[data-testid="stDecoration"] {display: none;}
+    .stDeployButton {display: none !important;}
+    div[data-testid="stDecoration"] {display: none !important;}
     div[class*="viewerBadge"] {display: none !important;}
-    iframe[sandbox] {display: none;}
+    .viewerBadge_link__1S137 {display: none !important;}
+    button[kind="header"] {display: none !important;}
+    [data-testid="manage-app-button"] {display: none !important;}
     </style>
     """,
     unsafe_allow_html=True,
