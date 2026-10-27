@@ -65,7 +65,7 @@ def show(df: pd.DataFrame, kind: str | None = None):
 
 
 # ------------------------------------------------------------------ Sidebar Main Menu
-st.sidebar.markdown("<p style='font-size: 16px; font-weight: bold;'>Financial analysis Tech-Builder</p>", unsafe_allow_html=True)
+st.sidebar.markdown("<p style='font-size: 15px; font-weight: bold;'>Financial analysis Tech-Builder</p>", unsafe_allow_html=True)
 st.sidebar.markdown("---")
 st.sidebar.markdown("<h3>Main Menu</h3>", unsafe_allow_html=True)
 
@@ -172,7 +172,7 @@ def page_companies():
                      "Years": f"{c.years[0]}–{c.years[-1]}", "Currency / Unit": c.meta_line}
                     for c in companies.values()]
             st.dataframe(pd.DataFrame(rows), hide_index=True)
-            exp = st.selectbox("Export Company Excel", list(companies))
+            exp = st.selectbox("Export Company Excel", list(companies), key="export_comp_select")
             st.download_button(
                 "⬇️ Download", data=build_workbook(companies[exp]), file_name=f"{slug(exp)}_input.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -183,7 +183,7 @@ def page_companies():
         if not companies:
             st.info("No companies available to delete.")
         else:
-            target_company = st.selectbox("Select Company to Delete", list(companies))
+            target_company = st.selectbox("Select Company to Delete", list(companies), key="delete_comp_select")
             st.warning(f"Are you sure you want to delete all data for «{target_company}»? This action cannot be undone.")
             if st.button("🗑️ Confirm Delete Company", type="primary"):
                 remove_company(target_company)
@@ -309,4 +309,29 @@ def page_reports():
         year = st.selectbox("Comparison Year", years) if years else None
         sig = ("compare", tuple(names), year)
         if st.button("Generate Report", type="primary"):
-            if
+            if len(names) < 2:
+                st.warning("Please select at least two companies.")
+            else:
+                with st.spinner("Generating..."):
+                    st.session_state.report = {"sig": sig, "xlsx": comparison_excel(sel, year),
+                                               "pdf": comparison_pdf(sel, year),
+                                               "base": f"comparison_{year}"}
+
+    rep = st.session_state.get("report")
+    if rep and rep["sig"] == sig:
+        st.success("Report is ready:")
+        c1, c2 = st.columns(2)
+        c1.download_button("⬇️ Download Excel", rep["xlsx"], file_name=f"{rep['base']}.xlsx", mime=xlsx_mime)
+        c2.download_button("⬇️ Download PDF", rep["pdf"], file_name=f"{rep['base']}.pdf", mime="application/pdf")
+
+
+# Pages Routing Dictionary
+pages_dict = {
+    "Companies Management": page_companies,
+    "Company Analysis": page_analysis,
+    "Compare Companies": page_compare,
+    "Reports": page_reports,
+}
+
+if page in pages_dict:
+    pages_dict[page]()
