@@ -21,7 +21,7 @@ from src.utils import fmt_value, format_frame, slug
 
 st.set_page_config(page_title="Financial analysis Tech-Builder", layout="wide")
 
-# Custom CSS to align everything to the Left (English LTR layout)
+# Custom CSS to align everything to the Left and HIDE Streamlit Header / Footer / Manage App button
 st.markdown(
     """
     <style>
@@ -37,6 +37,12 @@ st.markdown(
     div.row-widget.stRadio > div[role='radiogroup'] {
         justify-content: flex-start;
     }
+    /* إخفاء شريط أدوات Streamlit العلوي (Share, Star, GitHub, 3 dots) وزر Manage app في الأسفل */
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+    [data-testid="stStatusWidget"] {visibility: hidden;}
+    .stDeployButton {display:none;}
     </style>
     """,
     unsafe_allow_html=True,
